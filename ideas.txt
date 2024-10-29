@@ -1,0 +1,34 @@
+A programming language for embedded devices, GPUs, etc
+
+- Complete control of the compiler's output
+- Native language, ie. compiles to machine code (or whatever the programmer desires)
+- Strongly typed
+- Modules, no header files
+- Heavy emphasis on metaprogramming
+- No GC at runtime, by default
+- No hidden allocations at runtime
+- No hidden function calls
+- Allocators as first-class objects
+- Atomics and SIMD types as first-class citizens
+- Variable-width pointers, variable-width integers and floats (including the default int and float)
+- Certain types can be made illegal before run-time, eg. float if floating-point is not supported
+- Multiple return values
+- All functions must be able to be run at compile-time and at run-time, unless denoted otherwise (comp_only or rt_only)
+- Functions that use dynamic data structures must either have an allocator passed in or be marked as comp_only
+- Every type of node in the AST must be defined by the user at compile-time in terms of its run-time equivalent
+    - eg. arithmetic, branching, function calls (ABI)
+    - compile-time libraries will help with this
+- Defer {}, defer if cond {}
+- Notes (basic)
+- Macros instead of Generics and Polymorphic types
+- No overloading
+- Functions can appear OOP-like with syntactic sugar (similar to Go, first parameter is a pointer to a struct)
+- Complete control over struct padding, internal and external
+- No automatic optimisation
+    - Framework for optimisation based on AST patterns (to be determined how this will work)
+- All function inlining is manual (where it's guaranteed if specified)
+- Executable section layout
+- Entrypoint function
+    - Setup stack, setup interrupts, pre-initialise static variables, etc.
+- Inline assembly
+- Inject bytes as code (only inside macro, instantiated in function)
