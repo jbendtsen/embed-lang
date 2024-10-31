@@ -21,6 +21,8 @@ A programming language for embedded devices, GPUs, etc
 - Defer {}, defer if cond {}
 - Notes (basic)
 - Macros instead of Generics and Polymorphic types
+- Macros take variables instead of values
+- Code and other comptime only objects can be passed to macros
 - No overloading
 - Functions can appear OOP-like with syntactic sugar (similar to Go, first parameter is a pointer to a struct)
 - Complete control over struct padding, internal and external
@@ -32,3 +34,7 @@ A programming language for embedded devices, GPUs, etc
     - Setup stack, setup interrupts, pre-initialise static variables, etc.
 - Inline assembly
 - Inject bytes as code (only inside macro, instantiated in function)
+
+Constrain a function to only exist on 64-bit with:
+    #only(#target.bits == 64)
+

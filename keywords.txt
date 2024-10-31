@@ -1,0 +1,32 @@
+module
+import
+export
+#only
+func
+macro
+const
+switch
+case
+fallthrough
+repeat
+    - replaces for
+while
+goto
+@comptime_sizeof
+@runtime_sizeof
+
+TYPES:
+int
+float
+@string
+    - String, finalized (set in stone) by the end of comptime
+#code
+
+TYPE QUALIFIERS:
+atomic
+unsigned
+
+MAYBE:
+    - usealloc
+    - allocator
+    - interface

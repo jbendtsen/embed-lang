@@ -1,0 +1,60 @@
+module hello_linux
+
+#only(#comptime)
+func build() -> Compilation {
+    t := @target {};
+    t.name = "linux-minimal";
+    t.entrypoint = linux_main;
+    t.convention = {
+        
+    };
+    t.compiler = x64_compile;
+    t.assembler = x64_assemble;
+
+    ctx := Compilation {};
+    ctx.targets += t;
+    return ctx;
+}
+
+#only(#comptime)
+func x64_compile(writer @ByteVector, tokens []@String, ast @Ast) {
+    
+}
+
+#only(#comptime)
+func x64_assemble(writer @ByteVector, words []@String, ins []@Instruction) {
+    repeat ins.count with i {
+        const register_table := @String[] {
+            "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
+            "8", "9", "10", "11", "12", "13", "14", "15"
+        };
+        op := words[ins[i].parts[0]];
+        if op == "mov" {
+            register := @index_match(register_table, @make_slice(words[ins[i].parts[1]], 1));
+            writer.add(byte(0xb8 + register), @le32bytes(@to_int(words[ins[i].parts[2]])));
+        }
+        else if op == "lea" {
+            dst_reg := @index_match(register_table, @make_slice(words[ins[i].parts[1]], 1));
+            src_reg := @index_match(register_table, @make_slice(words[ins[i].parts[2]], 1));
+            writer.add(0x48, 0x8d, byte(0x05 + dst_reg * 8), @le32bytes(@to_int(words[ins[i].parts[3]])));
+        }
+        else if op == "syscall" {
+            writer.add(0x0f, 0x05);
+        }
+    }
+}
+
+func linux_main() {
+    const hello := "Hello World!\n";
+    const WRITE_FUNC := 1;
+    const STDOUT := 1;
+    #asm {
+        mov eax, WRITE_FUNC
+        lea rcx, [rip + #rel_pc(call_write+1)]
+        mov edi, STDOUT
+        lea rsi, [rip + #rel_pc(hello.ptr)]
+        mov edx, hello.bytecount
+        call_write:
+        syscall
+    }
+}
