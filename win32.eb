@@ -1,0 +1,103 @@
+module hello;
+
+#import Build_Windows("x64") as win_build;
+
+compfunc main() -> Compilation
+{
+	ctx := Compilation {};
+	target := win_build.Target {};
+	target.winapi_entrypoint = WinMain;
+	ctx.targets += target;
+	return ctx;
+}
+
+import Windows;
+
+const MY_IDI_APPLICATION = @bitcast(32512, ^char);
+const MY_IDC_ARROW       = @bitcast(32512, ^char);
+
+#convention(win_build.Winapi_Convention)
+func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) -> int
+{
+	inst := hInstance else GetModuleHandleA(null);
+	hwnd, errMsg := initGui(inst, handleWindowEvents, "embed-lang test", "testgui");
+	if !hwnd {
+		MessageBoxA(null, errMsg, "Error", MB_ICONEXCLAMATION | MB_OK);
+		return 0;
+	}
+
+	msg := MSG{};
+	while GetMessageA(^msg, null, 0, 0) {
+		TranslateMessage(^msg);
+		DispatchMessageA(^msg);
+	}
+
+	return int(msg.wParam);
+}
+
+func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR className) -> HWND, @string
+{
+	wc := WNDCLASSEX {
+		cbSize:        @runtime_sizeof(WNDCLASSEX),
+		style:         CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW,
+		lpfnWndProc:   mainProc,
+		hInstance:     hInstance,
+		hIcon:         LoadIconA(null, MY_IDI_APPLICATION),
+		hCursor:       LoadCursorA(null, MY_IDC_ARROW),
+		hbrBackground: CreateSolidBrush(WND_BACKGROUND),
+		lpszClassName: className,
+		hIconSm:       LoadIconA(null, MY_IDI_APPLICATION)
+	};
+
+	if !RegisterClassExA(^wc) {
+		return null, "Could not create main window: Window registration failed";
+	}
+
+	return CreateWindowExA(
+		WS_EX_CLIENTEDGE,
+		className,
+		title,
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		INITIAL_WIDTH, INITIAL_HEIGHT,
+		null, null, hInstance, null
+	), null;
+}
+
+#convention(win_build.Winapi_Convention)
+func handleWindowEvents(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT
+{
+	result := LRESULT(0);
+	isRelease := false;
+
+	switch uMsg {
+		case WM_KEYUP {
+			isRelease = true;
+			fallthrough;
+		}
+		case WM_KEYDOWN {
+			macro handleKey(isRelease bool, keyCode WPARAM, toMatch int, name @string) {
+	            if !isRelease && int(keyCode) == toMatch {
+		            #("func_" + name + "()");
+		            break;
+	            }
+            }
+
+			handle_key(isRelease, wParam, WM_KEY_W, "w");
+			handle_key(isRelease, wParam, WM_KEY_A, "a");
+			handle_key(isRelease, wParam, WM_KEY_S, "s");
+			handle_key(isRelease, wParam, WM_KEY_D, "d");
+		}
+		case WM_CLOSE {
+			DestroyWindow(hwnd);
+		}
+		case WM_DESTROY {
+			PostQuitMessage(0);
+		}
+		default {
+			result = DefWindowProcA(hwnd, uMsg, wParam, lParam);
+		}
+	}
+
+	return result;
+}

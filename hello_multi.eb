@@ -1,4 +1,4 @@
-module hello
+module hello;
 
 #only(#comptime)
 func main() -> Compilation {
@@ -9,7 +9,7 @@ func main() -> Compilation {
     return ctx;
 }
 
-import debug
+import debug;
 
 func hello() {
     print("Hello world!\n");

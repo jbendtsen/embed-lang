@@ -1,0 +1,40 @@
+macro my_for_range(int i, #known int start, #known int end, int inc, #code code) {
+    i = start
+    comp := #either(start < end, "<", ">=")
+    while i #(comp) end {
+        #(code)
+        i += inc
+    }
+}
+
+macro my_for(int i, int n, #code code) {
+    i = 0
+    while i < n {
+        #(code)
+        i++
+    }
+}
+
+macro for_with_lanes(int count, #known int n_lanes, #code inner) {
+    #lanes(n_lanes) {
+        repeat count / n_lanes with i {
+            #(inner)
+        }
+    }
+    #lanes(count % n_lanes) {
+        #(inner)
+    }
+}
+
+func a() {
+    i := 0
+    my_for (i, 10) {
+        print(i)
+    }
+    my_for_range(i, 60, 30, -10) {
+        print(i)
+    }
+    for_with_lanes(14, 4) {
+        print(i)
+    }
+}

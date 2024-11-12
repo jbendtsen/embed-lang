@@ -1,15 +1,15 @@
-module hello_linux
+module hello_linux;
 
 #only(#comptime)
 func build() -> Compilation {
-    t := @target {};
+    @target t;
     t.name = "linux-minimal";
     t.entrypoint = linux_main;
     t.convention = {
         
     };
-    t.compiler = x64_compile;
-    t.assembler = x64_assemble;
+    t.generate = x64_codegen;
+    t.assemble = x64_assemble;
 
     ctx := Compilation {};
     ctx.targets += t;
@@ -17,17 +17,17 @@ func build() -> Compilation {
 }
 
 #only(#comptime)
-func x64_compile(writer @ByteVector, tokens []@String, ast @Ast) {
+func x64_codegen(@ByteVector writer, []@String tokens, @Ast ast) {
     
 }
 
 #only(#comptime)
-func x64_assemble(writer @ByteVector, words []@String, ins []@Instruction) {
+func x64_assemble(@ByteVector writer, []@String words, []@Instruction ins) {
+    const register_table := @String[] {
+        "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
+        "8", "9", "10", "11", "12", "13", "14", "15"
+    };
     repeat ins.count with i {
-        const register_table := @String[] {
-            "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
-            "8", "9", "10", "11", "12", "13", "14", "15"
-        };
         op := words[ins[i].parts[0]];
         if op == "mov" {
             register := @index_match(register_table, @make_slice(words[ins[i].parts[1]], 1));

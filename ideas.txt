@@ -19,6 +19,8 @@ A programming language for embedded devices, GPUs, etc
     - eg. arithmetic, branching, function calls (ABI)
     - compile-time libraries will help with this
 - Defer {}, defer if cond {}
+- inline keyword either at function definition or at call site to manually inline a particular function call
+- User-defined null, boolean logic (eg. NOT or !) *cannot* be used on pointers for this reason
 - Notes (basic)
 - Macros instead of Generics and Polymorphic types
 - Macros take variables instead of values
