@@ -1,6 +1,7 @@
 #include "embed.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char **argv)
 {
@@ -37,10 +38,18 @@ int main(int argc, char **argv)
     *STRUCT_AT(&project.buffers, Buffer, first_buffer) = (Buffer) { .path = argv[1], .buf = buf, .size = sz };
 
     int first_ast = ALLOC_STRUCT(&project.asts, Ast);
-    parse_source_file(STRUCT_AT(&project.asts, Ast, first_ast), project.buffers[first_buffer], first_buffer);
+    parse_source_file(
+        STRUCT_AT(&project.asts, Ast, first_ast),
+        STRUCT_AT(&project.buffers, Buffer, first_buffer),
+        first_buffer
+    );
 
     run_project(&project);
-    close_project(&project);
+    //close_project(&project);
 
     return 0;
+}
+
+void run_project(Project *p) {
+
 }

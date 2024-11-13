@@ -4,6 +4,7 @@
 #define STRUCT_AT(vec, st, pos) (st*)(&(vec)->buf[pos])
 
 typedef unsigned char u8;
+typedef unsigned int u32;
 
 typedef struct {
     int *buf;
@@ -22,7 +23,7 @@ typedef struct {
     int left_node;
     int right_node;
     int token_start;
-    int token_end;
+    int token_len;
 } Ast_Node;
 
 typedef struct {
@@ -35,4 +36,8 @@ typedef struct {
     IntVector asts;
 } Project;
 
-void parse_source_file(Ast *ast, Buffer buffer, int buffer_idx);
+int IntVector_resize(IntVector *vec, int new_size);
+void IntVector_add(IntVector *vec, int x);
+void IntVector_add_multi(IntVector *vec, int *data, int n_elems);
+
+void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx);
