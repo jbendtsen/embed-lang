@@ -1,13 +1,14 @@
 #include "embed.h"
 
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
 
-#define FLAG_WAS_WS             1
-#define FLAG_END_INCLUSIVE      2
-#define FLAG_IN_SINGLE_COMMENT  4
-#define FLAG_IN_MULTI_COMMENT   8
+#define FLAG_IS_WS               1
+#define FLAG_WAS_WS              2
+#define FLAG_SHOULD_ADD          4
+#define FLAG_END_INCLUSIVE       8
+#define FLAG_IN_SINGLE_COMMENT  16
+#define FLAG_IN_MULTI_COMMENT   32
 
 #define TOKEN_COMMENT     1
 #define TOKEN_STRING      2
@@ -15,7 +16,9 @@
 #define TOKEN_IDENTIFIER  4
 #define TOKEN_OPERATOR    5
 
-void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
+#define ID_SEMICOLON  1
+
+void lex_source(Ast *ast, Buffer *buffer)
 {
     char token_dbg[64];
 
@@ -32,10 +35,6 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
     int quote_char = 0;
 
     int i = 0;
-
-    bool is_ws = false;
-    bool should_add = false;
-
     while (i < sz) {
         u8 byte = buf[i];
         int utf8_type = 0;
@@ -54,29 +53,27 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
                 i++;
         }
 
-        is_ws = cur == '\t' || cur == '\n' || cur == '\r' || cur == ' ';
-        should_add = false;
+        flags &= ~(FLAG_IS_WS | FLAG_SHOULD_ADD);
+        flags |= -(u32)(cur == '\t' || cur == '\n' || cur == '\r' || cur == ' ') & FLAG_IS_WS;
 
         if (flags & FLAG_IN_SINGLE_COMMENT) {
             if (cur == '\n') {
                 flags ^= FLAG_IN_SINGLE_COMMENT;
-                should_add = true;
+                flags |= FLAG_SHOULD_ADD;
             }
             goto lex_next;
         }
         if (flags & FLAG_IN_MULTI_COMMENT) {
             if (prev == '*' && cur == '/') {
                 flags ^= FLAG_IN_MULTI_COMMENT;
-                flags |= FLAG_END_INCLUSIVE;
-                should_add = true;
+                flags |= FLAG_SHOULD_ADD | FLAG_END_INCLUSIVE;
             }
             goto lex_next;
         }
         if (quote_char) {
             if (!(prev_prev != '\\' && prev == '\\') && cur == quote_char) {
                 quote_char = 0;
-                flags |= FLAG_END_INCLUSIVE;
-                should_add = true;
+                flags |= FLAG_SHOULD_ADD | FLAG_END_INCLUSIVE;
             }
             goto lex_next;
         }
@@ -97,12 +94,12 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
             goto lex_next;
         }
 
-        if (!is_ws && (cur < ' ' || cur > '~')) {
+        if ((flags & FLAG_IS_WS) == 0 && (cur < ' ' || cur > '~')) {
             goto lex_next;
         }
 
-        if (!is_ws) {
-            if (cur == '_' || (cur >= 'A' && cur <= 'Z') || (cur >= 'a' && cur <= 'z')) {
+        if ((flags & FLAG_IS_WS) == 0) {
+            if (cur == '#' || cur == '@' || cur == '_' || (cur >= 'A' && cur <= 'Z') || (cur >= 'a' && cur <= 'z')) {
                 type = TOKEN_IDENTIFIER;
             }
             else if (cur >= '0' && cur <= '9') {
@@ -111,41 +108,111 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
             }
             else {
                 type = TOKEN_OPERATOR;
+                flags |= FLAG_SHOULD_ADD & -(u32)(
+                    prev == '(' || prev == ')' || prev == '[' || prev == ']' || prev == ';' ||
+                    cur == ';' ||
+                    (prev == '=' && cur != '=')
+                );
             }
 
             if (flags & FLAG_WAS_WS)
                 start = i;
             else if (type != old_type && !(old_type == TOKEN_NUMBER && type == TOKEN_IDENTIFIER))
-                should_add = true;
-
-            if (i == 1) {
-                printf("SECOND CHARACTER: cur = %d, is_ws = %d, flags = 0x%x, old_type = %d, type = %d, start = %d, should_add = %d\n", cur, (int)is_ws, flags, old_type, type, start, (int)should_add);
-            }
+                flags |= FLAG_SHOULD_ADD;
         }
         else {
             type = 0;
             if ((flags & FLAG_WAS_WS) == 0)
-                should_add = true;
+                flags |= FLAG_SHOULD_ADD;
         }
 
 lex_next:
         if (start == i)
             old_type = type;
 
-        if ((should_add || i >= sz-1) && old_type > 0) {
+        if (((flags & FLAG_SHOULD_ADD) || i >= sz-1) && old_type > 0) {
             int inc = start == i || (flags & FLAG_END_INCLUSIVE) != 0;
             flags &= ~FLAG_END_INCLUSIVE;
 
+            int len = i - start + inc;
+            short id = 0;
+            if (len == 1) {
+                if (len == 1 && buf[start] == ';')
+                    id = ID_SEMICOLON;
+                else if (len == 1 && buf[start] == ',')
+                    id = ID_COMMA;
+                else if (len == 1 && buf[start] == '=')
+                    id = ID_EQUALS;
+                else if (len == 1 && buf[start] == '(')
+                    id = ID_PAREN_OPEN;
+                else if (len == 1 && buf[start] == ')')
+                    id = ID_PAREN_CLOSE;
+                else if (len == 1 && buf[start] == '[')
+                    id = ID_SQUARE_OPEN;
+                else if (len == 1 && buf[start] == ']')
+                    id = ID_SQUARE_CLOSE;
+                else if (len == 1 && buf[start] == '{')
+                    id = ID_BRACE_OPEN;
+                else if (len == 1 && buf[start] == '}')
+                    id = ID_BRACE_CLOSE;
+                else if (len == 1 && buf[start] == '.')
+                    id = ID_DOT;
+                else if (len == 1 && buf[start] == '<')
+                    id = ID_LESS_TEMPL;
+                else if (len == 1 && buf[start] == '>')
+                    id = ID_GREATER_TEMPL;
+                else if (len == 1 && buf[start] == '+')
+                    id = ID_PLUS_POS;
+                else if (len == 1 && buf[start] == '-')
+                    id = ID_MINUS_NEG;
+                else if (len == 1 && buf[start] == '*')
+                    id = ID_MULTIPLY;
+                else if (len == 1 && buf[start] == '/')
+                    id = ID_DIVIDE;
+                else if (len == 1 && buf[start] == '^')
+                    id = ID_XOR_REFER;
+                else if (len == 1 && buf[start] == '|')
+                    id = ID_OR_OP;
+                else if (len == 1 && buf[start] == '&')
+                    id = ID_AND_OP;
+                else if (len == 1 && buf[start] == '~')
+                    id = ID_NOT_OP;
+                else if (len == 1 && buf[start] == '!')
+                    id = ID_NOT_BOOL;
+            }
+            else if (len == 2) {
+                if (buf[start] == 'i' && buf[start+1] == 'f')
+                    id = ID_IF;
+                else if (buf[start] == '|' && buf[start+1] == '<')
+                    id = ID_LEFT_SHIFT;
+                else if (buf[start] == '|' && buf[start+1] == '>')
+                    id = ID_RIGHT_SHIFT;
+                else if (buf[start] == '|' && buf[start+1] == '|')
+                    id = ID_OR_BOOL;
+                else if (buf[start] == '&' && buf[start+1] == '&')
+                    id = ID_AND_BOOL;
+            }
+            else if (len == 3) {
+                else if (buf[start] == '|' && buf[start+1] == '<' && buf[start+2] == '=')
+                    id = ID_LEFT_SHIFT_ASSIGN;
+                else if (buf[start] == '|' && buf[start+1] == '>' && buf[start+2] == '=')
+                    id = ID_RIGHT_SHIFT_ASSIGN;
+            }
+            else if (len == 4) {
+            }
+
             int pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
             *STRUCT_AT(&ast->vec, Ast_Node, pos) = (Ast_Node) {
-                .type = old_type,
+                .lex_type = (short)old_type,
+                .builtin_id = id,
+                .depth = 0,
                 .left_node = 0,
                 .right_node = 0,
                 .token_start = start,
-                .token_len = i - start + inc
+                .token_len = len
             };
 
-            if (true) {
+            if (0) {
                 int dbg_len = i - start + inc;
                 if (dbg_len > 63) dbg_len = 63;
                 memcpy(token_dbg, &buf[start], dbg_len);
@@ -156,11 +223,26 @@ lex_next:
             start = i + inc;
         }
 
-        should_add = false;
-        flags = (flags & ~FLAG_WAS_WS) | (-(u32)is_ws & FLAG_WAS_WS);
+        flags &= ~(FLAG_SHOULD_ADD | FLAG_WAS_WS);
+        flags |= -(flags & FLAG_IS_WS) & FLAG_WAS_WS;
         old_type = type;
         prev_prev = prev;
         prev = cur;
         i++;
+    }
+}
+
+void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx)
+{
+    *ast = (Ast) {0};
+    ast->buffer_idx = buffer_idx;
+    lex_source(ast, buffer);
+
+    int first_statement = ast->vec.size;
+    int n_nodes = COUNT_ALLOCD(first_statement, Ast_Node);
+
+    for (int i = 0; i < n_nodes; i++) {
+        Ast_Node *node = STRUCT_AT(&ast->vec, Ast_Node, i * sizeof(Ast_Node) / sizeof(int));
+        node->
     }
 }

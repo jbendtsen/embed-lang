@@ -2,6 +2,7 @@
 
 #define ALLOC_STRUCT(vec, st) IntVector_resize(vec, (vec)->size + (sizeof(st) / sizeof(int)))
 #define STRUCT_AT(vec, st, pos) (st*)(&(vec)->buf[pos])
+#define COUNT_ALLOCD(size, st) sizeof(int) * (size) / sizeof(st)
 
 typedef unsigned char u8;
 typedef unsigned int u32;
@@ -19,7 +20,9 @@ typedef struct {
 } Buffer;
 
 typedef struct {
-    int type;
+    short lex_type;
+    short builtin_id;
+    int depth;
     int left_node;
     int right_node;
     int token_start;
@@ -27,7 +30,13 @@ typedef struct {
 } Ast_Node;
 
 typedef struct {
+    int type;
+    int first_node;
+} Ast_Statement;
+
+typedef struct {
     IntVector vec;
+    int first_statement;
     int buffer_idx;
 } Ast;
 
