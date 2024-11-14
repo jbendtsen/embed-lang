@@ -1,4 +1,4 @@
 #!/bin/sh
 
-gcc *.c -o embedc
+gcc -g *.c -o embedc
 

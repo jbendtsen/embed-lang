@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void run_project(Project *p);
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
@@ -38,8 +40,10 @@ int main(int argc, char **argv)
     *STRUCT_AT(&project.buffers, Buffer, first_buffer) = (Buffer) { .path = argv[1], .buf = buf, .size = sz };
 
     int first_ast = ALLOC_STRUCT(&project.asts, Ast);
+    Ast *ast = STRUCT_AT(&project.asts, Ast, first_ast);
+    *ast = (Ast) {0};
     parse_source_file(
-        STRUCT_AT(&project.asts, Ast, first_ast),
+        ast,
         STRUCT_AT(&project.buffers, Buffer, first_buffer),
         first_buffer
     );

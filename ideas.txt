@@ -36,6 +36,7 @@ A programming language for embedded devices, GPUs, etc
     - Setup stack, setup interrupts, pre-initialise static variables, etc.
 - Inline assembly
 - Inject bytes as code (only inside macro, instantiated in function)
+- flags type, similar to enum
 
 Constrain a function to only exist on 64-bit with:
     #only(#target.bits == 64)
