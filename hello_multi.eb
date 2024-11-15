@@ -1,10 +1,10 @@
 module hello;
 
 #only(#comptime)
-func main() -> Compilation {
-    import build_linux("x64") as linux
+func main() -> @Compilation {
+    linux := #import build_linux("x64")
 
-    ctx := Compilation {};
+    ctx := @Compilation {};
     ctx.targets += linux.make_target(hello, linux.Flex_Allocator);
     return ctx;
 }

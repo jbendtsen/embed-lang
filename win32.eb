@@ -1,10 +1,11 @@
 module hello;
 
-#import Build_Windows("x64") as win_build;
+win_build := #import Build_Windows("x64");
 
-compfunc main() -> Compilation
+#only(#comptime)
+func main() -> @Compilation
 {
-	ctx := Compilation {};
+	ctx := @Compilation {};
 	target := win_build.Target {};
 	target.winapi_entrypoint = WinMain;
 	ctx.targets += target;
@@ -13,8 +14,8 @@ compfunc main() -> Compilation
 
 import Windows;
 
-const MY_IDI_APPLICATION = @bitcast(32512, ^char);
-const MY_IDC_ARROW       = @bitcast(32512, ^char);
+const MY_IDI_APPLICATION = bitcast(32512, ^char);
+const MY_IDC_ARROW       = bitcast(32512, ^char);
 
 #convention(win_build.Winapi_Convention)
 func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) -> int
@@ -76,7 +77,7 @@ func handleWindowEvents(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> L
 			fallthrough;
 		}
 		case WM_KEYDOWN {
-			macro handleKey(isRelease bool, keyCode WPARAM, toMatch int, name @string) {
+			macro handleKey(bool isRelease, WPARAM keyCode, int toMatch, @String name) {
 	            if !isRelease && int(keyCode) == toMatch {
 		            #("func_" + name + "()");
 		            break;

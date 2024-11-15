@@ -13,8 +13,8 @@ A programming language for embedded devices, GPUs, etc
 - Variable-width pointers, variable-width integers and floats (including the default int and float)
 - Certain types can be made illegal before run-time, eg. float if floating-point is not supported
 - Multiple return values
-- All functions must be able to be run at compile-time and at run-time, unless denoted otherwise (comp_only or rt_only)
-- Functions that use dynamic data structures must either have an allocator passed in or be marked as comp_only
+- All functions must be able to be run at compile-time and at run-time, unless denoted otherwise (#only(#comptime) or #only(#runtime))
+- Functions that use dynamic data structures must either have an allocator passed in or be marked as #only(#comptime)
 - Every type of node in the AST must be defined by the user at compile-time in terms of its run-time equivalent
     - eg. arithmetic, branching, function calls (ABI)
     - compile-time libraries will help with this
@@ -36,7 +36,13 @@ A programming language for embedded devices, GPUs, etc
     - Setup stack, setup interrupts, pre-initialise static variables, etc.
 - Inline assembly
 - Inject bytes as code (only inside macro, instantiated in function)
+- Varargs and polymorphic types are only allowed in macros, not functions
 - flags type, similar to enum
+- #if and #else are obsolete, due to #known keyword as variable specifier
+    - eg. if everything in an `if` is #known or literal, then it's a compile-time `if`
+    - #known can be placed before `if` to throw an error if the condition is not #known
+- /, operator to demarcate optional parameters in macros, ie. everything after /, is optional
+- `for` instead of `while`
 
 Constrain a function to only exist on 64-bit with:
     #only(#target.bits == 64)

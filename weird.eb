@@ -1,40 +1,98 @@
 macro my_for_range(int i, #known int start, #known int end, int inc, #code code) {
-    i = start
-    comp := #either(start < end, "<", ">=")
-    while i #(comp) end {
-        #(code)
-        i += inc
+    i = start;
+    comp := #either(start < end, "<", ">=");
+    for i #(comp) end {
+        #(code);
+        i += inc;
     }
 }
 
 macro my_for(int i, int n, #code code) {
-    i = 0
-    while i < n {
-        #(code)
-        i++
+    i = 0;
+    for i < n {
+        #(code);
+        i++;
     }
 }
 
 macro for_with_lanes(int count, #known int n_lanes, #code inner) {
     #lanes(n_lanes) {
         repeat count / n_lanes with i {
-            #(inner)
+            #(inner);
         }
     }
     #lanes(count % n_lanes) {
-        #(inner)
+        #(inner);
+    }
+}
+
+macro run_twice(#code) {
+    #(code);
+    #(code);
+}
+
+// at least one varargs parameter is required
+macro coocoo($T thing, ... args) {
+    /*
+    run_twice() {
+        print(thing, args);
+    }
+    */
+    #code c = {
+        print(thing, args);
+    }
+    run_twice(c);
+}
+
+// any number of varargs are legal here, including none
+macro coocoo_any($T thing/, ... args) {
+    if args {
+        print(thing, args);
+        print(thing, args);
+    }
+    else {
+        print(thing);
+        print(thing);
+    }
+}
+
+func coocoo3(int thing, int a, int b) {
+    coocoo(thing, a, b);
+}
+
+macro ifelse(#known bool cond, #code a, #code b) {
+    if cond {
+        #(a);
+    }
+    else {
+        #(b);
+    }
+}
+
+macro assert(bool cond /, @String fmt = "assert failed", ... args) {
+    #known if #target.is_debug {
+        if !cond {
+            printf("line %d: " + fmt, args);
+            #target.abort();
+        }
     }
 }
 
 func a() {
-    i := 0
+    i := 0;
     my_for (i, 10) {
-        print(i)
+        print(i);
     }
     my_for_range(i, 60, 30, -10) {
-        print(i)
+        print(i);
     }
     for_with_lanes(14, 4) {
-        print(i)
+        print(i);
+    }
+
+    ifelse (#target.bits == 64) {
+        print("64 bit");
+    }, {
+        print(#target.bits, "bit");
     }
 }

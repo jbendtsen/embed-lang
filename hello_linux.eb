@@ -1,8 +1,8 @@
 module hello_linux;
 
 #only(#comptime)
-func build() -> Compilation {
-    @target t;
+func build() -> @Compilation {
+    @Target t;
     t.name = "linux-minimal";
     t.entrypoint = linux_main;
     t.convention = {
@@ -11,7 +11,7 @@ func build() -> Compilation {
     t.generate = x64_codegen;
     t.assemble = x64_assemble;
 
-    ctx := Compilation {};
+    ctx := @Compilation {};
     ctx.targets += t;
     return ctx;
 }
@@ -21,7 +21,7 @@ func x64_codegen(@ByteVector writer, []@String tokens, @Ast ast) {
     
 }
 
-#only(#comptime)
+#only
 func x64_assemble(@ByteVector writer, []@String words, []@Instruction ins) {
     const register_table := @String[] {
         "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
@@ -56,5 +56,8 @@ func linux_main() {
         mov edx, hello.bytecount
         call_write:
         syscall
+        xor eax, eax
+        leave
+        ret
     }
 }
