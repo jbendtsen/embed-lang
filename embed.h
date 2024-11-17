@@ -1,7 +1,8 @@
 #pragma once
 
-#define ALLOC_STRUCT(vec, st) IntVector_resize(vec, (vec)->size + (sizeof(st) / sizeof(int)))
-#define STRUCT_AT(vec, st, pos) (st*)(&(vec)->buf[pos])
+#define ALLOC_STRUCT(vec_ptr, st) IntVector_resize(vec_ptr, (vec_ptr)->size + (sizeof(st) / sizeof(int)))
+#define STRUCT_AT_POS(vec, st, pos) (st*)(&vec.buf[pos])
+#define STRUCT_AT_INDEX(vec, st, idx) (((st*)vec.buf) + (idx))
 #define COUNT_ALLOCD(size, st) sizeof(int) * (size) / sizeof(st)
 
 typedef unsigned char u8;
@@ -20,9 +21,9 @@ typedef struct {
 } Buffer;
 
 typedef struct {
-    short lex_type;
+    char lex_type;
+    char precedence;
     short builtin_id;
-    int depth;
     int left_node;
     int right_node;
     int token_start;
@@ -48,5 +49,6 @@ typedef struct {
 int IntVector_resize(IntVector *vec, int new_size);
 void IntVector_add(IntVector *vec, int x);
 void IntVector_add_multi(IntVector *vec, int *data, int n_elems);
+void IntVector_set_or_add(IntVector *vec, int idx, int a);
 
-void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx);
+void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator);

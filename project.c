@@ -37,13 +37,17 @@ int main(int argc, char **argv)
     Project project = {0};
 
     int first_buffer = ALLOC_STRUCT(&project.buffers, Buffer);
-    *STRUCT_AT(&project.buffers, Buffer, first_buffer) = (Buffer) { .path = argv[1], .buf = buf, .size = sz };
+    *STRUCT_AT_POS(project.buffers, Buffer, first_buffer) = (Buffer) { .path = argv[1], .buf = buf, .size = sz };
 
     int first_ast = ALLOC_STRUCT(&project.asts, Ast);
+
+    IntVector ac = {0};
+
     parse_source_file(
-        STRUCT_AT(&project.asts, Ast, first_ast),
-        STRUCT_AT(&project.buffers, Buffer, first_buffer),
-        first_buffer
+        STRUCT_AT_POS(project.asts, Ast, first_ast),
+        STRUCT_AT_POS(project.buffers, Buffer, first_buffer),
+        first_buffer,
+        &ac
     );
 
     run_project(&project);

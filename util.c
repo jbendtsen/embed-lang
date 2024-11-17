@@ -31,11 +31,11 @@ int IntVector_resize(IntVector *vec, int new_size)
     return old_size;
 }
 
-void IntVector_add(IntVector *vec, int x)
+void IntVector_add(IntVector *vec, int a)
 {
     int pos = vec->size;
     IntVector_resize(vec, pos + 1);
-    vec->buf[pos] = x;
+    vec->buf[pos] = a;
 }
 
 void IntVector_add_multi(IntVector *vec, int *data, int n_elems)
@@ -47,4 +47,12 @@ void IntVector_add_multi(IntVector *vec, int *data, int n_elems)
     IntVector_resize(vec, pos + n_elems);
     for (int i = 0; i < n_elems; i++)
         vec->buf[pos+i] = data[i];
+}
+
+void IntVector_set_or_add(IntVector *vec, int idx, int a)
+{
+    if (idx < 0 || idx >= vec->size)
+        IntVector_add(vec, a);
+    else
+        vec->buf[idx] = a;
 }
