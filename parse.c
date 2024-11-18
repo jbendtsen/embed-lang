@@ -24,73 +24,85 @@
 #define TOKEN_IDENTIFIER  4
 #define TOKEN_OPERATOR    5
 
-#define ID_SEMICOLON 1
-#define ID_COMMA 2
-#define ID_COLON 3
-#define ID_EQUALS 4
-#define ID_PAREN_OPEN 5
-#define ID_PAREN_CLOSE 6
-#define ID_SQUARE_OPEN 7
-#define ID_SQUARE_CLOSE 8
-#define ID_BRACE_OPEN 9
-#define ID_BRACE_CLOSE 10
-#define ID_DOT 11
-#define ID_LESS_THAN 12
-#define ID_GREATER_THAN 13
-#define ID_PLUS_POS 14
-#define ID_MINUS_NEG 15
-#define ID_MULTIPLY 16
-#define ID_DIVIDE 17
-#define ID_MODULO 18
-#define ID_XOR_REFER 19
-#define ID_OR_OP 20
-#define ID_AND_OP 21
-#define ID_NOT_OP 22
-#define ID_NOT_BOOL 23
-#define ID_AUTO_ASSIGN 24
-#define ID_LESS_EQUAL 25
-#define ID_GREATER_EQUAL 26
-#define ID_PLUS_ASSIGN 27
-#define ID_MINUS_ASSIGN 28
-#define ID_MULTIPLY_ASSIGN 29
-#define ID_DIVIDE_ASSIGN 30
-#define ID_MODULO_ASSIGN 31
-#define ID_XOR_ASSIGN 32
-#define ID_OR_ASSIGN 33
-#define ID_AND_ASSIGN 34
-#define ID_NOT_EQUAL 35
-#define ID_IS_EQUAL 36
-#define ID_IF 37
-#define ID_LEFT_SHIFT 38
-#define ID_RIGHT_SHIFT 39
-#define ID_TEMPL_OPEN 40
-#define ID_TEMPL_CLOSE 41
-#define ID_OR_BOOL 42
-#define ID_AND_BOOL 43
-#define ID_COMMA_OPTIONAL 44
-#define ID_FOR 45
-#define ID_LEFT_SHIFT_ASSIGN 46
-#define ID_RIGHT_SHIFT_ASSIGN 47
-#define ID_ELSE 48
-#define ID_CASE 49
-#define ID_GOTO 50
-#define ID_FUNC 51
-#define ID_ASM 52
-#define ID_MACRO 53
-#define ID_CONST 54
-#define ID_BREAK 55
-#define ID_ONLY 56
-#define ID_RETURN 57
-#define ID_REPEAT 58
-#define ID_SWITCH 59
-#define ID_MODULE 60
-#define ID_IMPORT 61
-#define ID_KNOWN 62
-#define ID_DEFAULT 63
-#define ID_BITCAST 64
-#define ID_COMP_IMPORT 65
-#define ID_CONVENTION 66
-#define ID_FALLTHROUGH 67
+#define ID_IDENTIFIER_BIND 1
+#define ID_SEMICOLON 2
+#define ID_COMMA 3
+#define ID_COLON 4
+#define ID_EQUALS 5
+#define ID_INVOKE_OPEN 6
+#define ID_PAREN_OPEN 7
+#define ID_PAREN_CLOSE 8
+#define ID_SQUARE_OPEN 9
+#define ID_SQUARE_CLOSE 10
+#define ID_BRACE_OPEN 11
+#define ID_BRACE_CLOSE 12
+#define ID_DOT 13
+#define ID_LESS_THAN 14
+#define ID_GREATER_THAN 15
+#define ID_ADD 16
+#define ID_POSITIVE 17
+#define ID_SUBTRACT 18
+#define ID_NEGATIVE 19
+#define ID_MULTIPLY 20
+#define ID_DIVIDE 21
+#define ID_MODULO 22
+#define ID_XOR_REFER 23
+#define ID_OR_OP 24
+#define ID_AND_OP 25
+#define ID_NOT_OP 26
+#define ID_NOT_BOOL 27
+#define ID_AUTO_ASSIGN 28
+#define ID_LESS_EQUAL 29
+#define ID_GREATER_EQUAL 30
+#define ID_ADD_ASSIGN 31
+#define ID_SUBTRACT_ASSIGN 32
+#define ID_MULTIPLY_ASSIGN 33
+#define ID_DIVIDE_ASSIGN 34
+#define ID_MODULO_ASSIGN 35
+#define ID_XOR_ASSIGN 36
+#define ID_OR_ASSIGN 37
+#define ID_AND_ASSIGN 38
+#define ID_NOT_EQUAL 39
+#define ID_IS_EQUAL 40
+#define ID_IF 41
+#define ID_LEFT_SHIFT 42
+#define ID_RIGHT_SHIFT 43
+#define ID_TEMPL_OPEN 44
+#define ID_TEMPL_CLOSE 45
+#define ID_POSTFIX_INCREMENT 46
+#define ID_PREFIX_INCREMENT 47
+#define ID_POSTFIX_DECREMENT 48
+#define ID_PREFIX_DECREMENT 49
+#define ID_OR_BOOL 50
+#define ID_AND_BOOL 51
+#define ID_COMMA_OPTIONAL 52
+#define ID_FOR 53
+#define ID_ABS 54
+#define ID_MIN 55
+#define ID_MAX 56
+#define ID_LEFT_SHIFT_ASSIGN 57
+#define ID_RIGHT_SHIFT_ASSIGN 58
+#define ID_ELSE 59
+#define ID_CASE 60
+#define ID_GOTO 61
+#define ID_FUNC 62
+#define ID_ASM 63
+#define ID_MACRO 64
+#define ID_CONST 65
+#define ID_BREAK 66
+#define ID_ONLY 67
+#define ID_RETURN 68
+#define ID_REPEAT 69
+#define ID_SWITCH 70
+#define ID_INLINE 71
+#define ID_MODULE 72
+#define ID_IMPORT 73
+#define ID_KNOWN 74
+#define ID_DEFAULT 75
+#define ID_BITCAST 76
+#define ID_COMP_IMPORT 77
+#define ID_CONVENTION 78
+#define ID_FALLTHROUGH 79
 
 #define OPERATOR(symbol, prec) (symbol) | ((prec) << 16)
 
@@ -109,6 +121,7 @@ void lex_source(Ast *ast, Buffer *buffer)
     int type = 0;
     int old_type = 0;
     int last_lex_type = 0;
+    int last_id = 0;
     int quote_char = 0;
 
     int i = 0;
@@ -186,8 +199,10 @@ void lex_source(Ast *ast, Buffer *buffer)
             else {
                 type = TOKEN_OPERATOR;
                 flags |= FLAG_SHOULD_ADD & -(u32)(
-                    prev == '(' || prev == ')' || prev == '[' || prev == ']' || prev == ';' ||
-                    cur == ';' ||
+                    //prev == '(' || prev == ')' || prev == '[' || prev == ']' || prev == ';' ||
+                    cur == ';' || cur == ',' || cur == '.' || cur == '~' ||
+                    cur == '(' || cur == ')' || cur == '[' || cur == ']' ||
+                    cur == '{' || cur == '}' ||
                     (prev == '=' && cur != '=')
                 );
             }
@@ -204,8 +219,10 @@ void lex_source(Ast *ast, Buffer *buffer)
         }
 
 lex_next:
-        if (start == i)
+        if (start == i) {
             old_type = type;
+            flags &= ~FLAG_SHOULD_ADD; // & -(u32)(type != TOKEN_OPERATOR);
+        }
 
         if (((flags & FLAG_SHOULD_ADD) || i >= sz-1) && old_type > 0) {
             int inc = start == i || (flags & FLAG_END_INCLUSIVE) != 0;
@@ -221,17 +238,17 @@ lex_next:
                     case ',': id = OPERATOR(ID_COMMA, 19); break;
                     case ':': id = OPERATOR(ID_COLON, 18); break;
                     case '=': id = OPERATOR(ID_EQUALS, 17); break;
-                    case '(': id = OPERATOR(ID_PAREN_OPEN, 3); break;
+                    case '(': id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_INVOKE_OPEN : ID_PAREN_OPEN, 3); break;
                     case ')': id = OPERATOR(ID_PAREN_CLOSE, 3); break;
                     case '[': id = OPERATOR(ID_SQUARE_OPEN, 2); break;
                     case ']': id = OPERATOR(ID_SQUARE_CLOSE, 2); break;
-                    case '{': id = OPERATOR(ID_BRACE_OPEN, 20); break;
-                    case '}': id = OPERATOR(ID_BRACE_CLOSE, 20); break;
-                    case '.': id = OPERATOR(ID_DOT, 1); break;
+                    case '{': id = OPERATOR(ID_BRACE_OPEN, 2); break;
+                    case '}': id = OPERATOR(ID_BRACE_CLOSE, 2); break;
+                    case '.': id = OPERATOR(ID_DOT, 2); break;
                     case '<': id = OPERATOR(ID_LESS_THAN, 11); break;
                     case '>': id = OPERATOR(ID_GREATER_THAN, 11); break;
-                    case '+': id = OPERATOR(ID_PLUS_POS, is_binary ? 6 : 4); break;
-                    case '-': id = OPERATOR(ID_MINUS_NEG, is_binary ? 6 : 4); break;
+                    case '+': id = OPERATOR(is_binary ? ID_ADD : ID_POSITIVE, is_binary ? 6 : 4); break;
+                    case '-': id = OPERATOR(is_binary ? ID_SUBTRACT : ID_NEGATIVE, is_binary ? 6 : 4); break;
                     case '*': id = OPERATOR(ID_MULTIPLY, is_binary ? 5 : 4); break;
                     case '/': id = OPERATOR(ID_DIVIDE, 5); break;
                     case '%': id = OPERATOR(ID_MODULO, 5); break;
@@ -247,8 +264,8 @@ lex_next:
                     case ':': id = OPERATOR(ID_AUTO_ASSIGN, 17); break;
                     case '<': id = OPERATOR(ID_LESS_EQUAL, 11); break;
                     case '>': id = OPERATOR(ID_GREATER_EQUAL, 11); break;
-                    case '+': id = OPERATOR(ID_PLUS_ASSIGN, 17); break;
-                    case '-': id = OPERATOR(ID_MINUS_ASSIGN, 17); break;
+                    case '+': id = OPERATOR(ID_ADD_ASSIGN, 17); break;
+                    case '-': id = OPERATOR(ID_SUBTRACT_ASSIGN, 17); break;
                     case '*': id = OPERATOR(ID_MULTIPLY_ASSIGN, 17); break;
                     case '/': id = OPERATOR(ID_DIVIDE_ASSIGN, 17); break;
                     case '%': id = OPERATOR(ID_MODULO_ASSIGN, 17); break;
@@ -267,9 +284,13 @@ lex_next:
                 else if (ARR_EQUAL_2(s, ">|"))
                     id = OPERATOR(ID_RIGHT_SHIFT, 7);
                 else if (ARR_EQUAL_2(s, "<<"))
-                    id = OPERATOR(ID_TEMPL_OPEN, 1);
+                    id = OPERATOR(ID_TEMPL_OPEN, 2);
                 else if (ARR_EQUAL_2(s, ">>"))
-                    id = OPERATOR(ID_TEMPL_CLOSE, 1);
+                    id = OPERATOR(ID_TEMPL_CLOSE, 2);
+                else if (ARR_EQUAL_2(s, "++"))
+                    id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_INCREMENT : ID_PREFIX_INCREMENT, 4);
+                else if (ARR_EQUAL_2(s, "--"))
+                    id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_DECREMENT : ID_PREFIX_DECREMENT, 4);
                 else if (ARR_EQUAL_2(s, "||"))
                     id = OPERATOR(ID_OR_BOOL, 14);
                 else if (ARR_EQUAL_2(s, "&&"))
@@ -280,6 +301,12 @@ lex_next:
             else if (len == 3) {
                 if (ARR_EQUAL_3(s, "for"))
                     id = ID_FOR;
+                else if (ARR_EQUAL_3(s, "abs"))
+                    id = ID_ABS;
+                else if (ARR_EQUAL_3(s, "min"))
+                    id = ID_MIN;
+                else if (ARR_EQUAL_3(s, "max"))
+                    id = ID_MAX;
                 else if (ARR_EQUAL_3(s, "<|="))
                     id = OPERATOR(ID_LEFT_SHIFT_ASSIGN, 17);
                 else if (ARR_EQUAL_3(s, ">|="))
@@ -314,6 +341,8 @@ lex_next:
                     id = ID_REPEAT;
                 else if (ARR_EQUAL_6(s, "switch"))
                     id = ID_SWITCH;
+                else if (ARR_EQUAL_6(s, "inline"))
+                    id = ID_INLINE;
                 else if (ARR_EQUAL_6(s, "module"))
                     id = ID_MODULE;
                 else if (ARR_EQUAL_6(s, "import"))
@@ -336,7 +365,23 @@ lex_next:
                 id = ID_FALLTHROUGH;
             }
 
-            int pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
+            int pos;
+            /*
+            if (old_type == TOKEN_IDENTIFIER && last_lex_type == TOKEN_IDENTIFIER) {
+                pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
+                *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
+                    .lex_type = TOKEN_OPERATOR,
+                    .precedence = 1,
+                    .builtin_id = ID_IDENTIFIER_BIND,
+                    .left_node = 0,
+                    .right_node = 0,
+                    .token_start = 0,
+                    .token_len = 0
+                };
+            }
+            */
+
+            pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
             *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
                 .lex_type = (char)old_type,
                 .precedence = (char)((id >> 16) & 0x7f),
@@ -358,6 +403,8 @@ lex_next:
             start = i + inc;
             if (old_type != TOKEN_COMMENT)
                 last_lex_type = old_type;
+
+            last_id = (short)(id & 0x7fff);
         }
 
         flags &= ~(FLAG_SHOULD_ADD | FLAG_WAS_WS);
@@ -395,44 +442,95 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
 
     for (int i = 0; i < allocator->size; i++)
         allocator->buf[i] = i;
-
+/*
+    struct {
+        int module_token;
+        int func_token;
+    };
+*/
     for (int i = 0; i < n_nodes; i++) {
         Ast_Node *node = STRUCT_AT_INDEX(ast->vec, Ast_Node, i);
         int end = 0;
         int n_ops = 0;
         while (i + end < n_nodes) {
             short op = node[end].builtin_id;
-            if (op == ID_SEMICOLON || op == ID_COMMA ||
-                op == ID_BRACE_OPEN || op == ID_BRACE_CLOSE ||
-                op == ID_PAREN_OPEN || op == ID_PAREN_CLOSE ||
-                op == ID_SQUARE_OPEN || op == ID_SQUARE_CLOSE ||
-                op == ID_TEMPL_OPEN || op == ID_TEMPL_CLOSE
-            )
-                break;
-
             n_ops += node[end].precedence > 0;
             IntVector_set_or_add(allocator, end, end);
             end++;
+
+            if (
+                op == ID_SEMICOLON || op == ID_COMMA ||
+                op == ID_BRACE_OPEN || op == ID_PAREN_OPEN ||
+                op == ID_INVOKE_OPEN || op == ID_SQUARE_OPEN || op == ID_TEMPL_OPEN ||
+                op == ID_BRACE_CLOSE || op == ID_PAREN_CLOSE ||
+                op == ID_SQUARE_CLOSE || op == ID_TEMPL_CLOSE
+            )
+                break;
         }
+        if (end == 0)
+            continue;
+
         sort_precedence(allocator->buf, node, end);
 
-        for (int i = 0; i < n_ops; i++) {
-            
+        for (int j = 0; j < n_ops; j++) {
+            int idx = allocator->buf[j];
+            //printf("%d (", idx);
+            idx = idx < 0 ? ~idx : idx;
+
+            int highest_left = -i - 1;
+            int highest_right = -i - 1;
+
+            for (int k = j+1; k < end; k++) {
+                if (highest_left >= 0 && highest_right >= 0)
+                    break;
+                //printf("%d, ", allocator->buf[k]);
+                if (allocator->buf[k] < 0)
+                    continue;
+
+                if (highest_left < 0 && allocator->buf[k] < idx) {
+                    highest_left = k;
+                    allocator->buf[k] = ~allocator->buf[k];
+                }
+                if (highest_right < 0 && allocator->buf[k] > idx) {
+                    highest_right = k;
+                    allocator->buf[k] = ~allocator->buf[k];
+                }
+            }
+            //printf(")\n");
+
+            node[idx].left_node = i + highest_left + 1;
+            node[idx].right_node = i + highest_right + 1;
+        }
+        for (int j = 0; j < n_ops; j++) {
+            int idx = allocator->buf[j];
+            idx = idx < 0 ? ~idx : idx;
+            if (node[idx].right_node <= 0) {
+                for (int k = j+1; k < end; k++) {
+                    if (allocator->buf[k] >= 0) {
+                        node[idx].right_node = i + k + 1;
+                        allocator->buf[k] = ~allocator->buf[k];
+                        break;
+                    }
+                }
+            }
         }
 
         if (1) {
             //printf("%d, %d -> ", i, end);
             for (int j = 0; j < end; j++) {
-                Ast_Node *n = &node[allocator->buf[j]];
+                int idx = allocator->buf[j];
+                idx = idx < 0 ? ~idx : idx;
+                Ast_Node *n = &node[idx];
                 int dbg_len = n->token_len;
                 if (dbg_len > 63) dbg_len = 63;
                 memcpy(token_dbg, &buffer->buf[n->token_start], dbg_len);
                 token_dbg[dbg_len] = 0;
-                printf("%s ", token_dbg);
+                printf("%s (%d,%d) ", token_dbg, n->left_node - i - 1, n->right_node - i - 1);
             }
             putchar('\n');
         }
 
-        i += end;
+        if (end > 0)
+            i += end - 1;
     }
 }

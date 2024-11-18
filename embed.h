@@ -33,11 +33,13 @@ typedef struct {
 typedef struct {
     int type;
     int first_node;
+    int left_stmt;
+    int right_stmt;
 } Ast_Statement;
 
 typedef struct {
     IntVector vec;
-    int first_statement;
+    int first_stmt;
     int buffer_idx;
 } Ast;
 

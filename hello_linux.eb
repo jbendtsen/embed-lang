@@ -2,7 +2,9 @@ module hello_linux;
 
 #only(#comptime)
 func build() -> @Compilation {
+    int meme;
     @Target t;
+    @Array<<int>> arr;
     t.name = "linux-minimal";
     t.entrypoint = linux_main;
     t.convention = {
@@ -17,13 +19,13 @@ func build() -> @Compilation {
 }
 
 #only(#comptime)
-func x64_codegen(@ByteVector writer, []@String tokens, @Ast ast) {
+func x64_codegen(@ByteVector writer, @Array<<@String>> tokens, @Ast ast) {
     
 }
 
-#only
-func x64_assemble(@ByteVector writer, []@String words, []@Instruction ins) {
-    const register_table := @String[] {
+#only(#comptime)
+func x64_assemble(@ByteVector writer, @Array<<@String>> words, @Array<<@Instruction>> ins) {
+    const register_table := @Array<<@String>> {
         "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
         "8", "9", "10", "11", "12", "13", "14", "15"
     };
