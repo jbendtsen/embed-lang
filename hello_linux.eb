@@ -24,12 +24,13 @@ func x64_codegen(@ByteVector writer, @Array<<@String>> tokens, @Ast ast) {
 }
 
 #only(#comptime)
-func x64_assemble(@ByteVector writer, @Array<<@String>> words, @Array<<@Instruction>> ins) {
+func x64_assemble(@ByteVector writer, @Array<<@String>> words, @Array<<@Instruction>> instructions) {
     const register_table := @Array<<@String>> {
         "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
         "8", "9", "10", "11", "12", "13", "14", "15"
     };
     repeat ins.count with i {
+        ^Instruction ins = instructions $$ i;
         op := words[ins[i].parts[0]];
         if op == "mov" {
             register := @index_match(register_table, @make_slice(words[ins[i].parts[1]], 1));

@@ -252,6 +252,7 @@ lex_next:
                     case '*': id = OPERATOR(ID_MULTIPLY, is_binary ? 5 : 4); break;
                     case '/': id = OPERATOR(ID_DIVIDE, 5); break;
                     case '%': id = OPERATOR(ID_MODULO, 5); break;
+                    case '$': id = OPERATOR(is_binary ? ID_REFER_INDEX : ID_POLYMORPHIC, is_binary ? 7 : 1); break;
                     case '^': id = OPERATOR(ID_XOR_REFER, is_binary ? 9 : 4); break;
                     case '|': id = OPERATOR(ID_OR_OP, 10); break;
                     case '&': id = OPERATOR(ID_AND_OP, 8); break;
@@ -287,6 +288,8 @@ lex_next:
                     id = OPERATOR(ID_TEMPL_OPEN, 2);
                 else if (ARR_EQUAL_2(s, ">>"))
                     id = OPERATOR(ID_TEMPL_CLOSE, 2);
+                else if (ARR_EQUAL_2(s, "$$"))
+                    id = OPERATOR(ID_REFER_BYTE, 7);
                 else if (ARR_EQUAL_2(s, "++"))
                     id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_INCREMENT : ID_PREFIX_INCREMENT, 4);
                 else if (ARR_EQUAL_2(s, "--"))
@@ -514,6 +517,8 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
                 }
             }
         }
+
+        // TODO: Add statement, connect with previous, ensure left and right leaves are set correctly on the new/previous statements
 
         if (1) {
             //printf("%d, %d -> ", i, end);
