@@ -1,11 +1,11 @@
 module hello;
 
-win_build := #import Build_Windows("x64");
+let win_build = #import Build_Windows("x64");
 
 #only(#comptime)
-func main() -> @Compilation
+func build() -> #Compilation
 {
-	ctx := @Compilation {};
+	ctx := #Compilation {};
 	target := win_build.Target {};
 	target.winapi_entrypoint = WinMain;
 	ctx.targets += target;
@@ -36,10 +36,10 @@ func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int 
 	return int(msg.wParam);
 }
 
-func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR className) -> HWND, @string
+func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR className) -> HWND, #String
 {
-	wc := WNDCLASSEX {
-		cbSize:        @runtime_sizeof(WNDCLASSEX),
+	let wc = WNDCLASSEX {
+		cbSize:        #runtime_sizeof(WNDCLASSEX),
 		style:         CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW,
 		lpfnWndProc:   mainProc,
 		hInstance:     hInstance,
