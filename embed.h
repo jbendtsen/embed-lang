@@ -28,6 +28,7 @@ typedef struct {
     short builtin_id;
     int left_node;
     int right_node;
+    int next_node;
     int token_start;
     int token_len;
 } Ast_Node;

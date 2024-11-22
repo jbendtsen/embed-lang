@@ -393,6 +393,7 @@ lex_next:
                     .builtin_id = ID_PAREN_CLOSE,
                     .left_node = 0,
                     .right_node = 0,
+                    .next_node = 0,
                     .token_start = 0,
                     .token_len = 0
                 };
@@ -410,6 +411,7 @@ lex_next:
                     .builtin_id = ID_INVOKE_OPEN,
                     .left_node = 0,
                     .right_node = 0,
+                    .next_node = 0,
                     .token_start = 0,
                     .token_len = 0
                 };
@@ -446,6 +448,7 @@ lex_next:
                 .builtin_id = (short)(id & 0xffff),
                 .left_node = 0,
                 .right_node = 0,
+                .next_node = 0,
                 .token_start = start,
                 .token_len = len
             };
@@ -518,7 +521,7 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
             continue;
 
         IntVector_set_or_add_repeated(allocator, end, 0, end);
-        //int *order = allocator->buf;
+        int *order = allocator->buf;
         int *stack = &allocator->buf[end];
 
         char highest = 0;
@@ -530,27 +533,18 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
             }
         }
 
-        /*
-        // Sort operator nodes by precedence, using insertion sort
-        for (int j = 1; j < end; j++) {
-            int k = j - 1;
-            while (k >= 0 && node[order[k+1]].precedence > node[order[k]].precedence) {
-                int temp = order[k+1];
-                order[k+1] = order[k];
-                order[k] = temp;
-                k--;
-            }
-        }*/
-
         int depth = 0;
         int ss = 0;
+        int cur = 0;
         int idx = highest_node;
-        node[idx].flags |= FLAG_VISITED;
+
+        node[highest_node].flags |= FLAG_VISITED;
         do {
             if (ss > 0) {
                 idx = stack[--ss];
                 depth = node[idx].depth;
             }
+            order[cur++] = idx;
 
             highest = 0;
             int left = -i - 1;
@@ -610,27 +604,14 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
 
         } while (ss > 0);
 
+        for (int j = cur - 1; j > 0; j--)
+            node[order[j]].next_node = i + 1 + order[j-1];
+
         // TODO: Add statement, connect with previous, ensure left and right leaves are set correctly on the new/previous statements
         // TODO: exception channeling for platforms like JVM (without burdening the runtime with real exceptions)
         // TODO: user-level intrinsics, eg. is it code or a global variable, assembly code representation, compile-time alternative in case the compiler runs it, name etc.
 
-        if (1) {
-            //printf("%d, %d -> ", i, end);
-            for (int j = 0; j < end; j++) {
-                int idx = j;
-                idx = idx < 0 ? ~idx : idx;
-                Ast_Node *n = &node[idx];
-                int dbg_len = n->token_len;
-                if (dbg_len > 63) dbg_len = 63;
-                memcpy(token_dbg, &buffer->buf[n->token_start], dbg_len);
-                token_dbg[dbg_len] = 0;
-                printf("%s (%d,%d,%d) ", token_dbg, j, n->left_node - i - 1, n->right_node - i - 1);
-            }
-            putchar('\n');
-        }
-
-        int first_node = highest_node;
-        if (first_node < 0) first_node = ~first_node;
+        int first_node = order[cur-1];
 
         int pos = ALLOC_STRUCT(&ast->vec, Ast_Statement);
         *STRUCT_AT_POS(ast->vec, Ast_Statement, pos) = (Ast_Statement) {
@@ -640,7 +621,7 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
             .right_stmt = 0
         };
 
-        
+        int stmt_connection_type = node[end-1].builtin_id;
 
         i += end - 1;
     }
