@@ -1,12 +1,12 @@
 module hello;
 
-let win_build = #import Build_Windows("x64");
+@win_build = #import Build_Windows("x64");
 
 #only(#comptime)
-func build() -> #Compilation
+func main() -> #Compilation
 {
-	ctx := #Compilation {};
-	target := win_build.Target {};
+	@ctx = #Compilation {};
+	@target = win_build.Target {};
 	target.winapi_entrypoint = WinMain;
 	ctx.targets += target;
 	return ctx;
@@ -14,20 +14,20 @@ func build() -> #Compilation
 
 import Windows;
 
-const MY_IDI_APPLICATION = bitcast(32512, ^char);
-const MY_IDC_ARROW       = bitcast(32512, ^char);
+?const @MY_IDI_APPLICATION = bitcast(32512, ^char);
+?const @MY_IDC_ARROW       = bitcast(32512, ^char);
 
 #convention(win_build.Winapi_Convention)
 func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) -> int
 {
-	inst := hInstance else GetModuleHandleA(null);
-	hwnd, errMsg := initGui(inst, handleWindowEvents, "embed-lang test", "testgui");
+	@inst = hInstance ?? GetModuleHandleA(null);
+	@hwnd, @errMsg = initGui(inst, handleWindowEvents, "embed-lang test".ptr, "testgui".ptr);
 	if !hwnd {
-		MessageBoxA(null, errMsg, "Error", MB_ICONEXCLAMATION | MB_OK);
+		MessageBoxA(null, errMsg, "Error".ptr, MB_ICONEXCLAMATION | MB_OK);
 		return 0;
 	}
 
-	msg := MSG{};
+	@msg = MSG{};
 	while GetMessageA(^msg, null, 0, 0) {
 		TranslateMessage(^msg);
 		DispatchMessageA(^msg);
@@ -38,7 +38,7 @@ func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int 
 
 func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR className) -> HWND, #String
 {
-	let wc = WNDCLASSEX {
+	@wc = WNDCLASSEX {
 		cbSize:        #runtime_sizeof(WNDCLASSEX),
 		style:         CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW,
 		lpfnWndProc:   mainProc,
@@ -62,14 +62,14 @@ func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR classNa
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		INITIAL_WIDTH, INITIAL_HEIGHT,
 		null, null, hInstance, null
-	), null;
+	), "";
 }
 
 #convention(win_build.Winapi_Convention)
 func handleWindowEvents(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT
 {
-	result := LRESULT(0);
-	isRelease := false;
+	LRESULT result = 0;
+	@isRelease = false;
 
 	switch uMsg {
 		case WM_KEYUP {
@@ -77,7 +77,7 @@ func handleWindowEvents(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> L
 			fallthrough;
 		}
 		case WM_KEYDOWN {
-			macro handleKey(bool isRelease, WPARAM keyCode, int toMatch, @String name) {
+			macro handleKey(bool isRelease, WPARAM keyCode, int toMatch, #String name) {
 	            if !isRelease && int(keyCode) == toMatch {
 		            #("func_" + name + "()");
 		            break;

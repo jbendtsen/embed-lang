@@ -20,11 +20,10 @@ A programming language for embedded devices, GPUs, etc
     - compile-time libraries will help with this
 - Defer {}, defer if cond {}
 - inline keyword either at function definition or at call site to manually inline a particular function call
-- User-defined null, boolean logic (eg. NOT or !) *cannot* be used on pointers for this reason
+- User-defined null: boolean logic on pointers uses a comparison with the current definition of null
 - Notes (basic)
-- Macros instead of Generics and Polymorphic types
+- Only macros can use generic/polymorphic types, comptime-only objects (eg. #code), optional arguments, variadic argument list, etc.
 - Macros take variables instead of values
-- Code and other comptime only objects can be passed to macros
 - No overloading
 - Functions can appear OOP-like with syntactic sugar (similar to Go, first parameter is a pointer to a struct)
 - Complete control over struct padding, internal and external
@@ -43,6 +42,8 @@ A programming language for embedded devices, GPUs, etc
     - #known can be placed before `if` to throw an error if the condition is not #known
 - /, operator to demarcate optional parameters in macros, ie. everything after /, is optional
 - `for` instead of `while`
+- Throw errors from metaprogram, ie. user-level compile errors
+    - eg. if a note called ?foo is placed on an expression, but when generating code for that expression, a branch instruction is used, then throw an error
 
 Constrain a function to only exist on 64-bit with:
     #only(#target.bits == 64)

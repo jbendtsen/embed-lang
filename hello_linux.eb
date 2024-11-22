@@ -1,10 +1,12 @@
 module hello_linux;
 
+int a = b * 9 + c / 8 % d - 7;
+
 #only(#comptime)
 func build() -> #Compilation {
-    $$unused int meme;
+    ?unused int meme;
     #Target t;
-    #Array<<int>> arr;
+    [int] arr;
     t.name = "linux-minimal";
     t.entrypoint = linux_main;
     t.convention = {
@@ -12,33 +14,43 @@ func build() -> #Compilation {
     };
     t.generate = x64_codegen;
     t.assemble = x64_assemble;
+    t.test[0] = "none";
 
-    let ctx = #Compilation {};
+    @ctx = #Compilation {};
     ctx.targets += t;
     return ctx;
 }
 
 #only(#comptime)
-func x64_codegen(#ByteVector writer, <<#String>> tokens, #Ast ast) {
+func x64_codegen(#Flex<u8> writer, [#String] tokens, #Ast ast) {
     
 }
 
+macro index_match([$T] array, $T elem) -> int {
+    repeat array.count, @i {
+        if array[i] == elem {
+            return i;
+        }
+    }
+    return -1;
+}
+
 #only(#comptime)
-func x64_assemble(#ByteVector writer, <<#String>> words, <<#Instruction>> instructions) {
-    let register_table = <<#String>> {
+func x64_assemble(#Flex<u8> writer, [#String] words, [#Instruction] instructions) {
+    @register_table = [#String] {
         "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
         "8", "9", "10", "11", "12", "13", "14", "15"
-    });
-    repeat ins.count with i {
+    };
+    repeat ins.count, @i {
         ^Instruction ins = instructions @ i;
-        let op = words[ins[i].parts[0]];
+        @op = words[ins[i].parts[0]];
         if op == "mov" {
-            let register = #index_match(register_table, #make_slice(words[ins[i].parts[1]], 1));
-            writer.add(byte(0xb8 + register), #le32bytes(#to_int(words[ins[i].parts[2]])));
+            @register = index_match(register_table, words[ins.parts[1]]);
+            writer.add(byte(0xb8 + register), #le32bytes(#to_int(words[ins.parts[2]])));
         }
         else if op == "lea" {
-            let dst_reg = #index_match(register_table, #make_slice(words[ins[i].parts[1]], 1));
-            let src_reg = #index_match(register_table, #make_slice(words[ins[i].parts[2]], 1));
+            @dst_reg = index_match(register_table, words[ins.parts[1]]);
+            @src_reg = index_match(register_table, words[ins.parts[2]]);
             writer.add(0x48, 0x8d, byte(0x05 + dst_reg * 8), #le32bytes(#to_int(words[ins[i].parts[3]])));
         }
         else if op == "syscall" {
@@ -48,16 +60,14 @@ func x64_assemble(#ByteVector writer, <<#String>> words, <<#Instruction>> instru
 }
 
 func linux_main() {
-    let hello = "Hello World!\n";
-    let WRITE_FUNC = 1;
-    let STDOUT = 1;
+    @hello = "Hello World!\n";
     #asm {
-        mov eax, WRITE_FUNC
+        mov eax, 1 // write
         lea rcx, [rip + #rel_pc(call_write+1)]
-        mov edi, STDOUT
+        mov edi, 1 // stdout
         lea rsi, [rip + #rel_pc(hello.ptr)]
         mov edx, hello.bytecount
-        call_write:
+    call_write:
         syscall
         xor eax, eax
         leave

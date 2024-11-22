@@ -56,3 +56,14 @@ void IntVector_set_or_add(IntVector *vec, int idx, int a)
     else
         vec->buf[idx] = a;
 }
+
+void IntVector_set_or_add_repeated(IntVector *vec, int idx, int a, int count)
+{
+    if (count <= 0 || idx < 0)
+        return;
+
+    if (idx + count > vec->size)
+        IntVector_resize(vec, idx + count);
+    for (int i = 0; i < count; i++)
+        vec->buf[idx+i] = a;
+}

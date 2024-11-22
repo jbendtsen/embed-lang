@@ -1,6 +1,6 @@
 macro my_for_range(int i, #known int start, #known int end, int inc, #code code) {
     i = start;
-    comp := #either(start < end, "<", ">=");
+    @comp = decide(start < end, "<", ">=");
     for i #(comp) end {
         #(code);
         i += inc;
@@ -16,12 +16,12 @@ macro my_for(int i, int n, #code code) {
 }
 
 macro for_with_lanes(int count, #known int n_lanes, #code inner) {
-    #lanes(n_lanes) {
-        repeat count / n_lanes with i {
+    #lanes n_lanes {
+        repeat count / n_lanes, i {
             #(inner);
         }
     }
-    #lanes(count % n_lanes) {
+    #lanes count % n_lanes {
         #(inner);
     }
 }
@@ -46,13 +46,20 @@ macro coocoo($T thing, ... args) {
 
 // any number of varargs are legal here, including none
 macro coocoo_any($T thing/, ... args) {
-    if args {
+    /*
+    #code c = decide(args.count > 0) {
         print(thing, args);
-        print(thing, args);
+    }, {
+        print(thing);
     }
-    else {
-        print(thing);
-        print(thing);
+    run_twice(c);
+    */
+    run_twice() {
+        decide(args.count > 0) {
+            print(thing, args);
+        }, {
+            print(thing);
+        }
     }
 }
 
@@ -78,8 +85,36 @@ macro assert(bool cond /, @String fmt = "assert failed", ... args) {
     }
 }
 
+macro reverse_index_match([$T] array, $T elem) -> int {
+    repeat array.count, @i, -1 {
+        if array[i] == elem {
+            return i;
+        }
+    }
+    return -1;
+}
+
+macro lerp(float t, $T a, $T b) -> $T {
+    $T result;
+    #known switch $T {
+        case float {
+            #asm { lerp result, t, a, b }
+        }
+        case vec2 {
+            #asm {
+                lerp result.x, t, a.x, b.x
+                lerp result.y, t, a.y, b.y
+            }
+        }
+        default {
+            #error("Unsupported type in lerp macro:", $T)
+        }
+    }
+    return result;
+}
+
 func a() {
-    i := 0;
+    @i = 0;
     my_for (i, 10) {
         print(i);
     }

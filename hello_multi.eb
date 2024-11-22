@@ -1,10 +1,10 @@
 module hello;
 
 #only(#comptime)
-func main() -> @Compilation {
-    linux := #import build_linux("x64")
+func main() -> #Compilation {
+    @linux = #import build_linux("x64")
 
-    ctx := @Compilation {};
+    @ctx = #Compilation {};
     ctx.targets += linux.make_target(hello, linux.Flex_Allocator);
     return ctx;
 }
@@ -13,5 +13,5 @@ import debug;
 
 func hello() {
     print("Hello world!\n");
-    print("Running on " + @platform.name + "\n");
+    print("Running on " + #target.name + "\n");
 }

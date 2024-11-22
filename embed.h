@@ -21,6 +21,8 @@ typedef struct {
 } Buffer;
 
 typedef struct {
+    short flags;
+    short depth;
     char lex_type;
     char precedence;
     short builtin_id;
@@ -31,7 +33,7 @@ typedef struct {
 } Ast_Node;
 
 typedef struct {
-    int type;
+    int parent;
     int first_node;
     int left_stmt;
     int right_stmt;
@@ -52,5 +54,6 @@ int IntVector_resize(IntVector *vec, int new_size);
 void IntVector_add(IntVector *vec, int x);
 void IntVector_add_multi(IntVector *vec, int *data, int n_elems);
 void IntVector_set_or_add(IntVector *vec, int idx, int a);
+void IntVector_set_or_add_repeated(IntVector *vec, int idx, int a, int count);
 
 void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator);
