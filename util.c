@@ -67,3 +67,62 @@ void IntVector_set_or_add_repeated(IntVector *vec, int idx, int a, int count)
     for (int i = 0; i < count; i++)
         vec->buf[idx+i] = a;
 }
+
+int resolve_line_column_from_index(Buffer *buffer, int *indexes, int *lines, int *cols, int n_indexes)
+{
+    u8 *buf = buffer->buf;
+    int sz = buffer->size;
+
+    // sort indexes with insertion sort, so that 
+    for (int i = 1; i < n_indexes; i++) {
+        int j = i - 1;
+        while (j >= 0 && indexes[j+1] > indexes[j]) {
+            int temp = indexes[j+1];
+            indexes[j+1] = indexes[j];
+            indexes[j] = temp;
+            j--;
+        }
+    }
+
+    int idx = 0;
+    int line = 0;
+    int col = 0;
+    int prev = 0;
+
+    for (int i = 0; i < sz && idx < n_indexes; i++) {
+        u8 byte = buf[i];
+        int utf8_type = 0;
+        if ((byte & 0xe0) == 0xc0)
+            utf8_type = 1;
+        else if ((byte & 0xf0) == 0xe0)
+            utf8_type = 2;
+        else if ((byte & 0xf8) == 0xf0)
+            utf8_type = 3;
+        int cur = byte & ((1 << (7 - utf8_type)) - 1);
+
+        int inc = 0;
+        while (utf8_type > 0 && i+inc < sz) {
+            cur = (cur << 6) | (buf[i+inc] & 0x3f);
+            utf8_type--;
+            if (utf8_type > 0)
+                inc++;
+        }
+
+        while (idx < n_indexes && indexes[idx] == i) {
+            lines[idx] = line;
+            cols[idx] = col;
+            idx++;
+        }
+
+        col++;
+        if (cur == '\r' || (cur == '\n' && prev != '\r')) {
+            line++;
+            col = 0;
+        }
+
+        prev = cur;
+        i += inc;
+    }
+
+    return idx;
+}

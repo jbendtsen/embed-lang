@@ -1,7 +1,7 @@
 #pragma once
 
 #define ALLOC_STRUCT(vec_ptr, st) IntVector_resize(vec_ptr, (vec_ptr)->size + (sizeof(st) / sizeof(int)))
-#define STRUCT_AT_POS(vec, st, pos) (st*)(&vec.buf[pos])
+#define STRUCT_AT_POS(vec, st, pos) ((st*)(&vec.buf[pos]))
 #define STRUCT_AT_INDEX(vec, st, idx) (((st*)vec.buf) + (idx))
 #define COUNT_ALLOCD(size, st) sizeof(int) * (size) / sizeof(st)
 
@@ -37,6 +37,7 @@ typedef struct {
     int parent;
     int first_node;
     int left_stmt;
+    int next_stmt;
     int right_stmt;
 } Ast_Statement;
 
@@ -56,5 +57,7 @@ void IntVector_add(IntVector *vec, int x);
 void IntVector_add_multi(IntVector *vec, int *data, int n_elems);
 void IntVector_set_or_add(IntVector *vec, int idx, int a);
 void IntVector_set_or_add_repeated(IntVector *vec, int idx, int a, int count);
+
+int resolve_line_column_from_index(Buffer *buffer, int *indexes, int *lines, int *cols, int n_indexes);
 
 void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator);

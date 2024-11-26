@@ -17,7 +17,7 @@
 #define FLAG_END_INCLUSIVE       8
 #define FLAG_IN_SINGLE_COMMENT  16
 #define FLAG_IN_MULTI_COMMENT   32
-#define FLAG_INSERTED_INVOKE    64
+#define FLAG_INSERTED_PAREN     64
 
 #define FLAG_VISITED  1
 
@@ -383,7 +383,7 @@ lex_next:
             }
 
             int pos;
-            if ((flags & FLAG_INSERTED_INVOKE) && ((id & 0xffff) == ID_BRACE_OPEN || (id & 0xffff) == ID_BRACE_CLOSE || (id & 0xffff) == ID_SEMICOLON)) {
+            if ((flags & FLAG_INSERTED_PAREN) && ((id & 0xffff) == ID_BRACE_OPEN || (id & 0xffff) == ID_BRACE_CLOSE || (id & 0xffff) == ID_SEMICOLON)) {
                 pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
                 *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
                     .flags = 0,
@@ -397,25 +397,25 @@ lex_next:
                     .token_start = 0,
                     .token_len = 0
                 };
-                flags &= ~FLAG_INSERTED_INVOKE;
+                flags &= ~FLAG_INSERTED_PAREN;
                 //printf("Insert close\n");
             }
 
-            if (last_lex_type == TOKEN_IDENTIFIER && last_id != 0 && (id & 0xffff) != ID_INVOKE_OPEN) {
+            if (last_lex_type == TOKEN_IDENTIFIER && last_id != 0 && (id & 0xffff) != ID_BRACE_OPEN) {
                 pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
                 *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
                     .flags = 0,
                     .depth = 0,
                     .lex_type = TOKEN_OPERATOR,
                     .precedence = 3,
-                    .builtin_id = ID_INVOKE_OPEN,
+                    .builtin_id = ID_PAREN_OPEN,
                     .left_node = 0,
                     .right_node = 0,
                     .next_node = 0,
                     .token_start = 0,
                     .token_len = 0
                 };
-                flags |= FLAG_INSERTED_INVOKE;
+                flags |= FLAG_INSERTED_PAREN;
                 //printf("Insert open\n");
             }
 
@@ -481,22 +481,30 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
 {
     char token_dbg[64];
 
+    int error_index[2];
+    int error_lines[2];
+    int error_cols[2];
+
     *ast = (Ast) {0};
     ast->buffer_idx = buffer_idx;
     lex_source(ast, buffer);
 
     int first_statement = ast->vec.size;
     int n_nodes = COUNT_ALLOCD(first_statement, Ast_Node);
-
-    for (int i = 0; i < allocator->size; i++)
-        allocator->buf[i] = i;
+    ast->first_stmt = first_statement;
 /*
     struct {
         int module_token;
         int func_token;
     };
 */
-    int parent_pos = -1;
+    int prev_stmt_connection_type = 0;
+    int prev_pos = 0;
+
+    int last_open_type = 0;
+    int last_open_index = 0;
+
+    int parent_stack_idx = 0;
 
     for (int i = 0; i < n_nodes; i++) {
         Ast_Node *node = STRUCT_AT_INDEX(ast->vec, Ast_Node, i);
@@ -505,7 +513,6 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
         while (i + end < n_nodes) {
             short op = node[end].builtin_id;
             n_ops += node[end].precedence > 0;
-            IntVector_set_or_add(allocator, end, end);
             end++;
 
             if (
@@ -520,9 +527,12 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
         if (end == 0)
             continue;
 
-        IntVector_set_or_add_repeated(allocator, end, 0, end);
-        int *order = allocator->buf;
-        int *stack = &allocator->buf[end];
+        int new_size = parent_stack_idx + end * 2;
+        if (new_size > allocator->size)
+            IntVector_resize(allocator, new_size);
+
+        int *order = &allocator->buf[parent_stack_idx];
+        int *stack = &order[end];
 
         char highest = 0;
         int highest_node = 0;
@@ -607,21 +617,94 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
         for (int j = cur - 1; j > 0; j--)
             node[order[j]].next_node = i + 1 + order[j-1];
 
-        // TODO: Add statement, connect with previous, ensure left and right leaves are set correctly on the new/previous statements
-        // TODO: exception channeling for platforms like JVM (without burdening the runtime with real exceptions)
-        // TODO: user-level intrinsics, eg. is it code or a global variable, assembly code representation, compile-time alternative in case the compiler runs it, name etc.
-
         int first_node = order[cur-1];
 
         int pos = ALLOC_STRUCT(&ast->vec, Ast_Statement);
         *STRUCT_AT_POS(ast->vec, Ast_Statement, pos) = (Ast_Statement) {
-            .parent = parent_pos + 1,
+            .parent = 1,
             .first_node = i + first_node + 1,
             .left_stmt = 0,
+            .next_stmt = 0,
             .right_stmt = 0
         };
 
-        int stmt_connection_type = node[end-1].builtin_id;
+        int cur_stmt_connection_type = node[end-1].builtin_id;
+
+        switch (prev_stmt_connection_type) {
+            case ID_SEMICOLON:
+            case ID_COMMA:
+            {
+                STRUCT_AT_POS(ast->vec, Ast_Statement, prev_pos)->next_stmt = pos;
+                break;
+            }
+
+            case ID_BRACE_OPEN:
+            case ID_PAREN_OPEN:
+            case ID_INVOKE_OPEN:
+            case ID_SQUARE_OPEN:
+            case ID_TEMPL_OPEN:
+            {
+                Ast_Statement *prev = STRUCT_AT_POS(ast->vec, Ast_Statement, prev_pos);
+                int *leaf = prev_stmt_connection_type == ID_BRACE_OPEN ? &prev->right_stmt : &prev->left_stmt;
+                *leaf = pos;
+                last_open_type = prev_stmt_connection_type;
+                last_open_index = i;
+
+                // Since 'order' is not used for the rest of the loop, and there must be at least 2 (ie. end*2) spare slots at the end of allocator->buf, this is safe.
+                allocator->buf[parent_stack_idx++] = i + 1;
+                break;
+            }
+
+            case ID_BRACE_CLOSE:
+            case ID_PAREN_CLOSE:
+            case ID_SQUARE_CLOSE:
+            case ID_TEMPL_CLOSE:
+            {
+                break;
+            }
+        }
+
+        if (parent_stack_idx > 0)
+            STRUCT_AT_POS(ast->vec, Ast_Statement, pos)->parent = allocator->buf[parent_stack_idx-1];
+
+        const char *ch_close = NULL;
+        switch (cur_stmt_connection_type) {
+            case ID_BRACE_CLOSE:
+                ch_close = "}";
+                goto handle_close_token;
+            case ID_PAREN_CLOSE:
+                ch_close = ")";
+                goto handle_close_token;
+            case ID_SQUARE_CLOSE:
+                ch_close = "]";
+                goto handle_close_token;
+            case ID_TEMPL_CLOSE:
+            {
+                ch_close = ">>";
+        handle_close_token:
+                if (
+                    (last_open_type == ID_BRACE_OPEN && cur_stmt_connection_type != ID_BRACE_CLOSE) ||
+                    ((last_open_type == ID_PAREN_OPEN || last_open_type == ID_INVOKE_OPEN) && cur_stmt_connection_type != ID_PAREN_CLOSE) ||
+                    (last_open_type == ID_SQUARE_OPEN && cur_stmt_connection_type != ID_SQUARE_CLOSE) ||
+                    (last_open_type == ID_TEMPL_OPEN && cur_stmt_connection_type != ID_TEMPL_CLOSE)
+                ) {
+                    error_index[0] = STRUCT_AT_INDEX(ast->vec, Ast_Node, last_open_index)->token_start;
+                    error_index[1] = STRUCT_AT_INDEX(ast->vec, Ast_Node, i)->token_start;
+                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 2);
+                    printf("Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n", ch_close, last_open_type, error_lines[0], error_cols[0], error_lines[1], error_cols[1]);
+                    return;
+                }
+
+                parent_stack_idx--;
+                if (parent_stack_idx < 0) {
+                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 1);
+                    printf("Unmatched '%s' at line,col %d,%d\n", ch_close, error_lines[0], error_cols[0]);
+                }
+            }
+        }
+
+        prev_stmt_connection_type = cur_stmt_connection_type;
+        prev_pos = pos;
 
         i += end - 1;
     }
