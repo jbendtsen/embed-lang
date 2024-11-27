@@ -3,7 +3,7 @@ module hello_linux;
 int a = b * 9 + c / 8 % d - 7;
 
 #only(#comptime)
-func build() -> #Compilation {
+func main() -> #Compilation {
     ?unused int meme;
     #Target t;
     [int] arr;

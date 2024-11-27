@@ -1,4 +1,6 @@
-Add statement, connect with previous, ensure left and right leaves are set correctly on the new/previous statements
+Test simple compile-time only program, no file output
+Visualise AST somehow
+
 Exception channeling for platforms like JVM (without burdening the runtime with real exceptions)
 User-level intrinsics, eg. is it code or a global variable, assembly code representation, compile-time alternative in case the compiler runs it, name etc.
 Compile-time allocator, easy as possible to use

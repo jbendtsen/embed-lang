@@ -501,9 +501,6 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
     int prev_stmt_connection_type = 0;
     int prev_pos = 0;
 
-    int last_open_type = 0;
-    int last_open_index = 0;
-
     int parent_stack_idx = 0;
 
     for (int i = 0; i < n_nodes; i++) {
@@ -647,8 +644,6 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
                 Ast_Statement *prev = STRUCT_AT_POS(ast->vec, Ast_Statement, prev_pos);
                 int *leaf = prev_stmt_connection_type == ID_BRACE_OPEN ? &prev->right_stmt : &prev->left_stmt;
                 *leaf = pos;
-                last_open_type = prev_stmt_connection_type;
-                last_open_index = i;
 
                 // Since 'order' is not used for the rest of the loop, and there must be at least 2 (ie. end*2) spare slots at the end of allocator->buf, this is safe.
                 allocator->buf[parent_stack_idx++] = i + 1;
@@ -682,23 +677,31 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
             {
                 ch_close = ">>";
         handle_close_token:
-                if (
-                    (last_open_type == ID_BRACE_OPEN && cur_stmt_connection_type != ID_BRACE_CLOSE) ||
-                    ((last_open_type == ID_PAREN_OPEN || last_open_type == ID_INVOKE_OPEN) && cur_stmt_connection_type != ID_PAREN_CLOSE) ||
-                    (last_open_type == ID_SQUARE_OPEN && cur_stmt_connection_type != ID_SQUARE_CLOSE) ||
-                    (last_open_type == ID_TEMPL_OPEN && cur_stmt_connection_type != ID_TEMPL_CLOSE)
-                ) {
-                    error_index[0] = STRUCT_AT_INDEX(ast->vec, Ast_Node, last_open_index)->token_start;
-                    error_index[1] = STRUCT_AT_INDEX(ast->vec, Ast_Node, i)->token_start;
-                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 2);
-                    printf("Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n", ch_close, last_open_type, error_lines[0], error_cols[0], error_lines[1], error_cols[1]);
+
+                parent_stack_idx--;
+                int parent = 0;
+                if (parent_stack_idx >= 0)
+                    parent = allocator->buf[parent_stack_idx];
+
+                if (parent <= 0) {
+                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 1);
+                    printf("Unmatched '%s' at line,col %d,%d\n", ch_close, error_lines[0], error_cols[0]);
                     return;
                 }
 
-                parent_stack_idx--;
-                if (parent_stack_idx < 0) {
-                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 1);
-                    printf("Unmatched '%s' at line,col %d,%d\n", ch_close, error_lines[0], error_cols[0]);
+                Ast_Node *parent_node = STRUCT_AT_INDEX(ast->vec, Ast_Node, parent-1);
+
+                if (
+                    (parent_node->builtin_id == ID_BRACE_OPEN && cur_stmt_connection_type != ID_BRACE_CLOSE) ||
+                    ((parent_node->builtin_id == ID_PAREN_OPEN || parent_node->builtin_id == ID_INVOKE_OPEN) && cur_stmt_connection_type != ID_PAREN_CLOSE) ||
+                    (parent_node->builtin_id == ID_SQUARE_OPEN && cur_stmt_connection_type != ID_SQUARE_CLOSE) ||
+                    (parent_node->builtin_id == ID_TEMPL_OPEN && cur_stmt_connection_type != ID_TEMPL_CLOSE)
+                ) {
+                    error_index[0] = parent_node->token_start;
+                    error_index[1] = STRUCT_AT_INDEX(ast->vec, Ast_Node, i)->token_start;
+                    resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 2);
+                    printf("Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n", ch_close, parent_node->builtin_id, error_lines[0], error_cols[0], error_lines[1], error_cols[1]);
+                    return;
                 }
             }
         }
