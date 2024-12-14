@@ -50,7 +50,7 @@ int main(int argc, char **argv)
         &ac
     );
 
-    run_project(&project);
+    run_project(&project, &ac);
     //close_project(&project);
 
     return 0;

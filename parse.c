@@ -117,7 +117,7 @@
 
 #define OPERATOR(symbol, prec) (symbol) | ((prec) << 16)
 
-void lex_source(Ast *ast, Buffer *buffer)
+int lex_source(Ast *ast, Buffer *buffer)
 {
     char token_dbg[64];
 
@@ -133,7 +133,9 @@ void lex_source(Ast *ast, Buffer *buffer)
     int old_type = 0;
     int last_lex_type = 0;
     int last_id = 0;
+    int last_identifier_pos = -1;
     int quote_char = 0;
+    int module = -1;
 
     int i = 0;
     while (i < sz) {
@@ -382,6 +384,14 @@ lex_next:
                 id = ID_FALLTHROUGH;
             }
 
+            if (last_lex_type == 0 && old_type != TOKEN_COMMENT && id != ID_MODULE) {
+                printf(
+                    "Each source file must start with the module keyword, eg:\n"
+                    "module foo;\n"
+                );
+                return -1;
+            }
+
             int pos;
             if ((flags & FLAG_INSERTED_PAREN) && ((id & 0xffff) == ID_BRACE_OPEN || (id & 0xffff) == ID_BRACE_CLOSE || (id & 0xffff) == ID_SEMICOLON)) {
                 pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
@@ -418,23 +428,6 @@ lex_next:
                 flags |= FLAG_INSERTED_PAREN;
                 //printf("Insert open\n");
             }
-
-            /*
-            if (old_type == TOKEN_IDENTIFIER && last_lex_type == TOKEN_IDENTIFIER) {
-                pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
-                *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
-                    .flags = 0,
-                    .depth = 0,
-                    .lex_type = TOKEN_OPERATOR,
-                    .precedence = 1,
-                    .builtin_id = ID_IDENTIFIER_BIND,
-                    .left_node = 0,
-                    .right_node = 0,
-                    .token_start = 0,
-                    .token_len = 0
-                };
-            }
-            */
             
             if (old_type == TOKEN_OPERATOR && !is_binary)
                 old_type = TOKEN_UNARY;
@@ -453,7 +446,7 @@ lex_next:
                 .token_len = len
             };
 
-            if (0) {
+            if (false) {
                 int dbg_len = i - start + inc;
                 if (dbg_len > 63) dbg_len = 63;
                 memcpy(token_dbg, &buf[start], dbg_len);
@@ -465,6 +458,12 @@ lex_next:
             if (old_type != TOKEN_COMMENT)
                 last_lex_type = old_type;
 
+            if (old_type == TOKEN_IDENTIFIER) {
+                if (last_identifier_pos > 0 && STRUCT_AT_POS(ast->vec, Ast_Node, last_identifier_pos)->builtin_id == ID_MODULE)
+                    module = pos;
+                last_identifier_pos = pos;
+            }
+
             last_id = (short)(id & 0xffff);
         }
 
@@ -475,9 +474,11 @@ lex_next:
         prev = cur;
         i++;
     }
+
+    return 0;
 }
 
-void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator)
+int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
 {
     char token_dbg[64];
 
@@ -485,19 +486,6 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
     int error_lines[2];
     int error_cols[2];
 
-    *ast = (Ast) {0};
-    ast->buffer_idx = buffer_idx;
-    lex_source(ast, buffer);
-
-    int first_statement = ast->vec.size;
-    int n_nodes = COUNT_ALLOCD(first_statement, Ast_Node);
-    ast->first_stmt = first_statement;
-/*
-    struct {
-        int module_token;
-        int func_token;
-    };
-*/
     int prev_stmt_connection_type = 0;
     int prev_pos = 0;
 
@@ -686,7 +674,7 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
                 if (parent <= 0) {
                     resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 1);
                     printf("Unmatched '%s' at line,col %d,%d\n", ch_close, error_lines[0], error_cols[0]);
-                    return;
+                    return -1;
                 }
 
                 Ast_Node *parent_node = STRUCT_AT_INDEX(ast->vec, Ast_Node, parent-1);
@@ -700,8 +688,11 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
                     error_index[0] = parent_node->token_start;
                     error_index[1] = STRUCT_AT_INDEX(ast->vec, Ast_Node, i)->token_start;
                     resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 2);
-                    printf("Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n", ch_close, parent_node->builtin_id, error_lines[0], error_cols[0], error_lines[1], error_cols[1]);
-                    return;
+                    printf(
+                        "Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n",
+                        ch_close, parent_node->builtin_id, error_lines[0], error_cols[0], error_lines[1], error_cols[1]
+                    );
+                    return -1;
                 }
             }
         }
@@ -711,4 +702,42 @@ void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allo
 
         i += end - 1;
     }
+
+    return 0;
+}
+
+int typecheck_prepass(Ast *ast, Bufffer *buffer, IntVector *allocator)
+{
+    int first = ast->first_stmt;
+    int n_stmts = ast->n_stmts;
+
+    int module_token = -1;
+    int func_token = -1;
+
+    for (int i = 0; i < n_stmts; i++) {
+        Ast_Type type = {0};
+        
+    }
+}
+
+int parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator)
+{
+    *ast = (Ast) {0};
+    ast->buffer_idx = buffer_idx;
+    if (lex_source(ast, buffer)) != 0) {
+        return -1;
+    }
+
+    int first_statement = ast->vec.size;
+    int n_nodes = COUNT_ALLOCD(first_statement, Ast_Node);
+    ast->first_stmt = first_statement;
+    if (construct_ast(ast, n_nodes, buffer, allocator) != 0) {
+        return -1;
+    }
+
+    int statement_end = ast->vec.size;
+    int n_statements = COUNT_ALLOCD(statement_end - first_statement, Ast_Statement);
+    ast->n_stmts = n_statements;
+
+    return typecheck_prepass(ast, buffer, allocator);
 }

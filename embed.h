@@ -34,6 +34,21 @@ typedef struct {
 } Ast_Node;
 
 typedef struct {
+    union {
+        u32 flags;
+        int n_members;
+    };
+    int bytes;
+    int token;
+} Ast_Type;
+
+typedef struct {
+    int module_token;
+    int func_token;
+    int parent_func_pos;
+} Ast_Function;
+
+typedef struct {
     int parent;
     int first_node;
     int left_stmt;
@@ -43,7 +58,9 @@ typedef struct {
 
 typedef struct {
     IntVector vec;
+    int module_name_token;
     int first_stmt;
+    int n_stmts;
     int buffer_idx;
 } Ast;
 
