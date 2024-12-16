@@ -1,12 +1,12 @@
 module hello;
 
-@win_build = #import Build_Windows("x64");
+var win_build = #import Build_Windows("x64");
 
 #only(#comptime)
 func main() -> #Compilation
 {
-	@ctx = #Compilation {};
-	@target = win_build.Target {};
+	var ctx = #Compilation {};
+	var target = win_build.Target {};
 	target.winapi_entrypoint = WinMain;
 	ctx.targets += target;
 	return ctx;
@@ -14,20 +14,20 @@ func main() -> #Compilation
 
 import Windows;
 
-?const @MY_IDI_APPLICATION = bitcast(32512, ^char);
-?const @MY_IDC_ARROW       = bitcast(32512, ^char);
+?const MY_IDI_APPLICATION = bitcast(32512, ^char);
+?const MY_IDC_ARROW       = bitcast(32512, ^char);
 
 #convention(win_build.Winapi_Convention)
 func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) -> int
 {
-	@inst = hInstance ?? GetModuleHandleA(null);
-	@hwnd, @errMsg = initGui(inst, handleWindowEvents, "embed-lang test".ptr, "testgui".ptr);
+	var inst = hInstance ?? GetModuleHandleA(null);
+	var hwnd, errMsg = initGui(inst, handleWindowEvents, "embed-lang test".ptr, "testgui".ptr);
 	if !hwnd {
 		MessageBoxA(null, errMsg, "Error".ptr, MB_ICONEXCLAMATION | MB_OK);
 		return 0;
 	}
 
-	@msg = MSG{};
+	var msg = MSG{};
 	while GetMessageA(^msg, null, 0, 0) {
 		TranslateMessage(^msg);
 		DispatchMessageA(^msg);
@@ -38,7 +38,7 @@ func WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int 
 
 func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR className) -> HWND, #String
 {
-	@wc = WNDCLASSEX {
+	var wc = WNDCLASSEX {
 		cbSize:        #runtime_sizeof(WNDCLASSEX),
 		style:         CS_GLOBALCLASS | CS_HREDRAW | CS_VREDRAW,
 		lpfnWndProc:   mainProc,
@@ -69,7 +69,7 @@ func initGui(HINSTANCE hInstance, WNDPROC mainProc, LPCSTR title, LPCSTR classNa
 func handleWindowEvents(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT
 {
 	LRESULT result = 0;
-	@isRelease = false;
+	bool isRelease = false;
 
 	switch uMsg {
 		case WM_KEYUP {

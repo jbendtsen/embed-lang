@@ -1,6 +1,6 @@
 macro my_for_range(int i, #known int start, #known int end, int inc, #code code) {
     i = start;
-    @comp = decide(start < end, "<", ">=");
+    var comp = decide(start < end, "<", ">=");
     for i #(comp) end {
         #(code);
         i += inc;
@@ -76,7 +76,7 @@ macro ifelse(#known bool cond, #code a, #code b) {
     }
 }
 
-macro assert(bool cond /, @String fmt = "assert failed", ... args) {
+macro assert(bool cond /, #String fmt = "assert failed", ... args) {
     #known if #target.is_debug {
         if !cond {
             printf("line %d: " + fmt, args);
@@ -86,7 +86,7 @@ macro assert(bool cond /, @String fmt = "assert failed", ... args) {
 }
 
 macro reverse_index_match([$T] array, $T elem) -> int {
-    repeat array.count, @i, -1 {
+    repeat array.count, int i, -1 {
         if array[i] == elem {
             return i;
         }
@@ -114,7 +114,7 @@ macro lerp(float t, $T a, $T b) -> $T {
 }
 
 func a() {
-    @i = 0;
+    var i = 0;
     my_for (i, 10) {
         print(i);
     }

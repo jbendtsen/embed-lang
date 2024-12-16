@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void run_project(Project *p);
+void run_project(Project *p, IntVector *ac);
 
 int main(int argc, char **argv)
 {
@@ -43,12 +43,14 @@ int main(int argc, char **argv)
 
     IntVector ac = {0};
 
-    parse_source_file(
+    if (parse_source_file(
         STRUCT_AT_POS(project.asts, Ast, first_ast),
         STRUCT_AT_POS(project.buffers, Buffer, first_buffer),
         first_buffer,
         &ac
-    );
+    ) != 0) {
+        return 4;
+    }
 
     run_project(&project, &ac);
     //close_project(&project);
@@ -56,6 +58,6 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void run_project(Project *p) {
+void run_project(Project *p, IntVector *ac) {
 
 }

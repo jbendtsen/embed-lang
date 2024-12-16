@@ -35,7 +35,7 @@ typedef struct {
 
 typedef struct {
     union {
-        u32 flags;
+        u32 type_flags;
         int n_members;
     };
     int bytes;
@@ -43,10 +43,13 @@ typedef struct {
 } Ast_Type;
 
 typedef struct {
+    u32 type_flags;
+    int name_token;
+    int first_stmt_pos;
+    int n_stmts;
+    int parent_idx;
     int module_token;
-    int func_token;
-    int parent_func_pos;
-} Ast_Function;
+} Ast_Global;
 
 typedef struct {
     int parent;
@@ -57,7 +60,8 @@ typedef struct {
 } Ast_Statement;
 
 typedef struct {
-    IntVector vec;
+    IntVector nodes_stmts;
+    IntVector globals;
     int module_name_token;
     int first_stmt;
     int n_stmts;
@@ -77,4 +81,4 @@ void IntVector_set_or_add_repeated(IntVector *vec, int idx, int a, int count);
 
 int resolve_line_column_from_index(Buffer *buffer, int *indexes, int *lines, int *cols, int n_indexes);
 
-void parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator);
+int parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *allocator);

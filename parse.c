@@ -21,6 +21,9 @@
 
 #define FLAG_VISITED  1
 
+#define FLAG_TYPE_MACRO  1
+#define FLAG_TYPE_FUNC   2
+
 #define TOKEN_COMMENT     1
 #define TOKEN_STRING      2
 #define TOKEN_NUMBER      3
@@ -54,39 +57,39 @@
 #define ID_POLYMORPHIC 24
 #define ID_NOTE 25
 #define ID_REFER_INDEX 26
-#define ID_AUTO_ASSIGN 27
-#define ID_XOR_OP 28
-#define ID_REFERENCE 29
-#define ID_OR_OP 30
-#define ID_AND_OP 31
-#define ID_NOT_OP 32
-#define ID_NOT_BOOL 33
-#define ID_LESS_EQUAL 34
-#define ID_GREATER_EQUAL 35
-#define ID_ADD_ASSIGN 36
-#define ID_SUBTRACT_ASSIGN 37
-#define ID_MULTIPLY_ASSIGN 38
-#define ID_DIVIDE_ASSIGN 39
-#define ID_MODULO_ASSIGN 40
-#define ID_XOR_ASSIGN 41
-#define ID_OR_ASSIGN 42
-#define ID_AND_ASSIGN 43
-#define ID_NOT_EQUAL 44
-#define ID_IS_EQUAL 45
-#define ID_IF 46
-#define ID_LEFT_SHIFT 47
-#define ID_RIGHT_SHIFT 48
-#define ID_TEMPL_OPEN 49
-#define ID_TEMPL_CLOSE 50
-#define ID_REFER_BYTE 51
-#define ID_OTHERWISE 52
-#define ID_POSTFIX_INCREMENT 53
-#define ID_PREFIX_INCREMENT 54
-#define ID_POSTFIX_DECREMENT 55
-#define ID_PREFIX_DECREMENT 56
-#define ID_OR_BOOL 57
-#define ID_AND_BOOL 58
-#define ID_COMMA_OPTIONAL 59
+#define ID_XOR_OP 27
+#define ID_REFERENCE 28
+#define ID_OR_OP 29
+#define ID_AND_OP 30
+#define ID_NOT_OP 31
+#define ID_NOT_BOOL 32
+#define ID_LESS_EQUAL 33
+#define ID_GREATER_EQUAL 34
+#define ID_ADD_ASSIGN 35
+#define ID_SUBTRACT_ASSIGN 36
+#define ID_MULTIPLY_ASSIGN 37
+#define ID_DIVIDE_ASSIGN 38
+#define ID_MODULO_ASSIGN 39
+#define ID_XOR_ASSIGN 40
+#define ID_OR_ASSIGN 41
+#define ID_AND_ASSIGN 42
+#define ID_NOT_EQUAL 43
+#define ID_IS_EQUAL 44
+#define ID_IF 45
+#define ID_LEFT_SHIFT 46
+#define ID_RIGHT_SHIFT 47
+#define ID_TEMPL_OPEN 48
+#define ID_TEMPL_CLOSE 49
+#define ID_REFER_BYTE 50
+#define ID_OTHERWISE 51
+#define ID_POSTFIX_INCREMENT 52
+#define ID_PREFIX_INCREMENT 53
+#define ID_POSTFIX_DECREMENT 54
+#define ID_PREFIX_DECREMENT 55
+#define ID_OR_BOOL 56
+#define ID_AND_BOOL 57
+#define ID_COMMA_OPTIONAL 58
+#define ID_VAR 59
 #define ID_FOR 60
 #define ID_ABS 61
 #define ID_MIN 62
@@ -267,7 +270,7 @@ lex_next:
                     case '%': id = OPERATOR(ID_MODULO, 5); break;
                     case '$': id = OPERATOR(ID_POLYMORPHIC, 1); break;
                     case '?': id = OPERATOR(ID_NOTE, 1); break;
-                    case '@': id = OPERATOR(is_binary ? ID_REFER_INDEX : ID_AUTO_ASSIGN, is_binary ? 7 : 1); break;
+                    case '@': id = OPERATOR(ID_REFER_INDEX, 7); break;
                     case '^': id = OPERATOR(is_binary ? ID_XOR_OP : ID_REFERENCE, is_binary ? 9 : 4); break;
                     case '|': id = OPERATOR(ID_OR_OP, 10); break;
                     case '&': id = OPERATOR(ID_AND_OP, 8); break;
@@ -318,7 +321,9 @@ lex_next:
                     id = OPERATOR(ID_COMMA_OPTIONAL, 19);
             }
             else if (len == 3) {
-                if (ARR_EQUAL_3(s, "for"))
+                if (ARR_EQUAL_3(s, "var"))
+                    id = ID_VAR;
+                else if (ARR_EQUAL_3(s, "for"))
                     id = ID_FOR;
                 else if (ARR_EQUAL_3(s, "abs"))
                     id = ID_ABS;
@@ -394,8 +399,8 @@ lex_next:
 
             int pos;
             if ((flags & FLAG_INSERTED_PAREN) && ((id & 0xffff) == ID_BRACE_OPEN || (id & 0xffff) == ID_BRACE_CLOSE || (id & 0xffff) == ID_SEMICOLON)) {
-                pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
-                *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
+                pos = ALLOC_STRUCT(&ast->nodes_stmts, Ast_Node);
+                *STRUCT_AT_POS(ast->nodes_stmts, Ast_Node, pos) = (Ast_Node) {
                     .flags = 0,
                     .depth = 0,
                     .lex_type = TOKEN_OPERATOR,
@@ -412,8 +417,8 @@ lex_next:
             }
 
             if (last_lex_type == TOKEN_IDENTIFIER && last_id != 0 && (id & 0xffff) != ID_BRACE_OPEN) {
-                pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
-                *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
+                pos = ALLOC_STRUCT(&ast->nodes_stmts, Ast_Node);
+                *STRUCT_AT_POS(ast->nodes_stmts, Ast_Node, pos) = (Ast_Node) {
                     .flags = 0,
                     .depth = 0,
                     .lex_type = TOKEN_OPERATOR,
@@ -432,8 +437,8 @@ lex_next:
             if (old_type == TOKEN_OPERATOR && !is_binary)
                 old_type = TOKEN_UNARY;
 
-            pos = ALLOC_STRUCT(&ast->vec, Ast_Node);
-            *STRUCT_AT_POS(ast->vec, Ast_Node, pos) = (Ast_Node) {
+            pos = ALLOC_STRUCT(&ast->nodes_stmts, Ast_Node);
+            *STRUCT_AT_POS(ast->nodes_stmts, Ast_Node, pos) = (Ast_Node) {
                 .flags = 0,
                 .depth = 0,
                 .lex_type = (char)old_type,
@@ -459,8 +464,24 @@ lex_next:
                 last_lex_type = old_type;
 
             if (old_type == TOKEN_IDENTIFIER) {
-                if (last_identifier_pos > 0 && STRUCT_AT_POS(ast->vec, Ast_Node, last_identifier_pos)->builtin_id == ID_MODULE)
-                    module = pos;
+                if (last_identifier_pos > 0) {
+                    int last_id = STRUCT_AT_POS(ast->nodes_stmts, Ast_Node, last_identifier_pos)->builtin_id;
+                    if (last_id == ID_MODULE) {
+                        module = pos;
+                    }
+                    else if (last_id == ID_FUNC || last_id == ID_MACRO) {
+                        int method = ALLOC_STRUCT(&ast->globals, Ast_Global);
+                        *STRUCT_AT_POS(ast->globals, Ast_Global, method) = (Ast_Global) {
+                            .type_flags = last_id == ID_FUNC ? FLAG_TYPE_FUNC : FLAG_TYPE_MACRO,
+                            .name_token = pos,
+                            .first_stmt_pos = 0,
+                            .n_stmts = 0,
+                            .parent_idx = 0,
+                            .module_token = module
+                        };
+                    }
+                }
+
                 last_identifier_pos = pos;
             }
 
@@ -486,13 +507,25 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
     int error_lines[2];
     int error_cols[2];
 
+    int brace_levels = 0;
+
+    int cur_name_token = 0;
+    int cur_global = 0;
+    int n_globals = COUNT_ALLOCD(ast->globals.size, Ast_Global);
+
+    struct {
+        int idx;
+        int brace;
+    } stack_global[16] = {0};
+    int depth_stack_global = -1;
+
     int prev_stmt_connection_type = 0;
     int prev_pos = 0;
 
     int parent_stack_idx = 0;
 
     for (int i = 0; i < n_nodes; i++) {
-        Ast_Node *node = STRUCT_AT_INDEX(ast->vec, Ast_Node, i);
+        Ast_Node *node = STRUCT_AT_INDEX(ast->nodes_stmts, Ast_Node, i);
         int end = 0;
         int n_ops = 0;
         while (i + end < n_nodes) {
@@ -511,6 +544,31 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
         }
         if (end == 0)
             continue;
+
+        if (cur_global < n_globals) {
+            int name_token = STRUCT_AT_INDEX(ast->globals, Ast_Global, cur_global)->name_token;
+            if (name_token >= i && cur_name_token < i + end) {
+                cur_name_token = i;
+            }
+            if (cur_name_token > 0 && node[end-1].builtin_id == ID_BRACE_OPEN) {
+                depth_stack_global++;
+                if (depth_stack_global >= 16) {
+                    printf("Too many nested functions/macros (exceeds %d)\n", depth_stack_global);
+                    return -1;
+                }
+                stack_global[depth_stack_global].idx = cur_global;
+                stack_global[depth_stack_global].brace = brace_levels;
+
+                Ast_Global *g = STRUCT_AT_INDEX(ast->globals, Ast_Global, cur_global);
+                g->first_stmt_pos = sizeof(Ast_Statement) + (sizeof(int) * ast->nodes_stmts.size);
+                if (depth_stack_global >= 1)
+                    g->parent_idx = stack_global[depth_stack_global-1].idx;
+
+                cur_name_token = 0;
+                cur_global++;
+                brace_levels++;
+            }
+        }
 
         int new_size = parent_stack_idx + end * 2;
         if (new_size > allocator->size)
@@ -604,8 +662,8 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
 
         int first_node = order[cur-1];
 
-        int pos = ALLOC_STRUCT(&ast->vec, Ast_Statement);
-        *STRUCT_AT_POS(ast->vec, Ast_Statement, pos) = (Ast_Statement) {
+        int pos = ALLOC_STRUCT(&ast->nodes_stmts, Ast_Statement);
+        *STRUCT_AT_POS(ast->nodes_stmts, Ast_Statement, pos) = (Ast_Statement) {
             .parent = 1,
             .first_node = i + first_node + 1,
             .left_stmt = 0,
@@ -619,7 +677,7 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
             case ID_SEMICOLON:
             case ID_COMMA:
             {
-                STRUCT_AT_POS(ast->vec, Ast_Statement, prev_pos)->next_stmt = pos;
+                STRUCT_AT_POS(ast->nodes_stmts, Ast_Statement, prev_pos)->next_stmt = pos;
                 break;
             }
 
@@ -629,7 +687,7 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
             case ID_SQUARE_OPEN:
             case ID_TEMPL_OPEN:
             {
-                Ast_Statement *prev = STRUCT_AT_POS(ast->vec, Ast_Statement, prev_pos);
+                Ast_Statement *prev = STRUCT_AT_POS(ast->nodes_stmts, Ast_Statement, prev_pos);
                 int *leaf = prev_stmt_connection_type == ID_BRACE_OPEN ? &prev->right_stmt : &prev->left_stmt;
                 *leaf = pos;
 
@@ -648,12 +706,18 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
         }
 
         if (parent_stack_idx > 0)
-            STRUCT_AT_POS(ast->vec, Ast_Statement, pos)->parent = allocator->buf[parent_stack_idx-1];
+            STRUCT_AT_POS(ast->nodes_stmts, Ast_Statement, pos)->parent = allocator->buf[parent_stack_idx-1];
 
         const char *ch_close = NULL;
         switch (cur_stmt_connection_type) {
             case ID_BRACE_CLOSE:
                 ch_close = "}";
+                brace_levels--;
+                if (depth_stack_global >= 0 && brace_levels <= stack_global[depth_stack_global].brace) {
+                    Ast_Global *g = STRUCT_AT_INDEX(ast->globals, Ast_Global, stack_global[depth_stack_global].idx);
+                    g->n_stmts = (g->first_stmt_pos - pos) / sizeof(Ast_Global);
+                    depth_stack_global--;
+                }
                 goto handle_close_token;
             case ID_PAREN_CLOSE:
                 ch_close = ")";
@@ -677,7 +741,7 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
                     return -1;
                 }
 
-                Ast_Node *parent_node = STRUCT_AT_INDEX(ast->vec, Ast_Node, parent-1);
+                Ast_Node *parent_node = STRUCT_AT_INDEX(ast->nodes_stmts, Ast_Node, parent-1);
 
                 if (
                     (parent_node->builtin_id == ID_BRACE_OPEN && cur_stmt_connection_type != ID_BRACE_CLOSE) ||
@@ -686,7 +750,7 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
                     (parent_node->builtin_id == ID_TEMPL_OPEN && cur_stmt_connection_type != ID_TEMPL_CLOSE)
                 ) {
                     error_index[0] = parent_node->token_start;
-                    error_index[1] = STRUCT_AT_INDEX(ast->vec, Ast_Node, i)->token_start;
+                    error_index[1] = STRUCT_AT_INDEX(ast->nodes_stmts, Ast_Node, i)->token_start;
                     resolve_line_column_from_index(buffer, error_index, error_lines, error_cols, 2);
                     printf(
                         "Mismatched brackets for '%s' -> %d at line,col %d,%d to %d,%d\n",
@@ -694,6 +758,8 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
                     );
                     return -1;
                 }
+
+                break;
             }
         }
 
@@ -706,7 +772,7 @@ int construct_ast(Ast *ast, int n_nodes, Buffer *buffer, IntVector *allocator)
     return 0;
 }
 
-int typecheck_prepass(Ast *ast, Bufffer *buffer, IntVector *allocator)
+int typecheck_prepass(Ast *ast, Buffer *buffer, IntVector *allocator)
 {
     int first = ast->first_stmt;
     int n_stmts = ast->n_stmts;
@@ -724,18 +790,18 @@ int parse_source_file(Ast *ast, Buffer *buffer, int buffer_idx, IntVector *alloc
 {
     *ast = (Ast) {0};
     ast->buffer_idx = buffer_idx;
-    if (lex_source(ast, buffer)) != 0) {
+    if (lex_source(ast, buffer) != 0) {
         return -1;
     }
 
-    int first_statement = ast->vec.size;
+    int first_statement = ast->nodes_stmts.size;
     int n_nodes = COUNT_ALLOCD(first_statement, Ast_Node);
     ast->first_stmt = first_statement;
     if (construct_ast(ast, n_nodes, buffer, allocator) != 0) {
         return -1;
     }
 
-    int statement_end = ast->vec.size;
+    int statement_end = ast->nodes_stmts.size;
     int n_statements = COUNT_ALLOCD(statement_end - first_statement, Ast_Statement);
     ast->n_stmts = n_statements;
 

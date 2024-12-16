@@ -16,7 +16,7 @@ func main() -> #Compilation {
     t.assemble = x64_assemble;
     t.test[0] = "none";
 
-    @ctx = #Compilation {};
+    var ctx = #Compilation {};
     ctx.targets += t;
     return ctx;
 }
@@ -27,7 +27,7 @@ func x64_codegen(#Flex<u8> writer, [#String] tokens, #Ast ast) {
 }
 
 macro index_match([$T] array, $T elem) -> int {
-    repeat array.count, @i {
+    repeat array.count, int i {
         if array[i] == elem {
             return i;
         }
@@ -37,20 +37,20 @@ macro index_match([$T] array, $T elem) -> int {
 
 #only(#comptime)
 func x64_assemble(#Flex<u8> writer, [#String] words, [#Instruction] instructions) {
-    @register_table = [#String] {
+    var register_table = [#String] {
         "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
         "8", "9", "10", "11", "12", "13", "14", "15"
     };
-    repeat ins.count, @i {
+    repeat ins.count, int i {
         ^Instruction ins = instructions @ i;
-        @op = words[ins[i].parts[0]];
+        var op = words[ins[i].parts[0]];
         if op == "mov" {
-            @register = index_match(register_table, words[ins.parts[1]]);
+            var register = index_match(register_table, words[ins.parts[1]]);
             writer.add(byte(0xb8 + register), #le32bytes(#to_int(words[ins.parts[2]])));
         }
         else if op == "lea" {
-            @dst_reg = index_match(register_table, words[ins.parts[1]]);
-            @src_reg = index_match(register_table, words[ins.parts[2]]);
+            var dst_reg = index_match(register_table, words[ins.parts[1]]);
+            var src_reg = index_match(register_table, words[ins.parts[2]]);
             writer.add(0x48, 0x8d, byte(0x05 + dst_reg * 8), #le32bytes(#to_int(words[ins[i].parts[3]])));
         }
         else if op == "syscall" {
@@ -60,7 +60,7 @@ func x64_assemble(#Flex<u8> writer, [#String] words, [#Instruction] instructions
 }
 
 func linux_main() {
-    @hello = "Hello World!\n";
+    #String hello = "Hello World!\n";
     #asm {
         mov eax, 1 // write
         lea rcx, [rip + #rel_pc(call_write+1)]
