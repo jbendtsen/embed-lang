@@ -4,12 +4,13 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define ARR_EQUAL_2(a, b) a[0] == b[0] && a[1] == b[1]
-#define ARR_EQUAL_3(a, b) ARR_EQUAL_2(a, b) && a[2] == b[2]
-#define ARR_EQUAL_4(a, b) ARR_EQUAL_3(a, b) && a[3] == b[3]
-#define ARR_EQUAL_5(a, b) ARR_EQUAL_4(a, b) && a[4] == b[4]
-#define ARR_EQUAL_6(a, b) ARR_EQUAL_5(a, b) && a[5] == b[5]
-#define ARR_EQUAL_7(a, b) ARR_EQUAL_6(a, b) && a[6] == b[6]
+#define GET_BYTES_2(s) (s[0] & 0xffULL) | ((s[1] & 0xffULL) << 8)
+#define GET_BYTES_3(s) GET_BYTES_2(s) | ((s[2] & 0xffULL) << 16)
+#define GET_BYTES_4(s) GET_BYTES_3(s) | ((s[3] & 0xffULL) << 24)
+#define GET_BYTES_5(s) GET_BYTES_4(s) | ((s[4] & 0xffULL) << 32)
+#define GET_BYTES_6(s) GET_BYTES_5(s) | ((s[5] & 0xffULL) << 40)
+#define GET_BYTES_7(s) GET_BYTES_6(s) | ((s[6] & 0xffULL) << 48)
+#define GET_BYTES_8(s) GET_BYTES_7(s) | ((s[7] & 0xffULL) << 56)
 
 #define FLAG_IS_WS               1
 #define FLAG_WAS_WS              2
@@ -20,9 +21,13 @@
 #define FLAG_INSERTED_PAREN     64
 
 #define FLAG_VISITED  1
+#define FLAG_IS_TYPE  2
 
-#define FLAG_TYPE_MACRO  1
-#define FLAG_TYPE_FUNC   2
+#define FLAG_TYPE_MACRO     1
+#define FLAG_TYPE_FUNC      2
+#define FLAG_TYPE_POINTER   4
+#define FLAG_TYPE_UNSIGNED  8
+#define FLAG_TYPE_FLOAT     16
 
 #define TOKEN_COMMENT     1
 #define TOKEN_STRING      2
@@ -89,34 +94,62 @@
 #define ID_OR_BOOL 56
 #define ID_AND_BOOL 57
 #define ID_COMMA_OPTIONAL 58
-#define ID_VAR 59
-#define ID_FOR 60
-#define ID_ABS 61
-#define ID_MIN 62
-#define ID_MAX 63
-#define ID_LEFT_SHIFT_ASSIGN 64
-#define ID_RIGHT_SHIFT_ASSIGN 65
-#define ID_ELSE 66
-#define ID_CASE 67
-#define ID_GOTO 68
-#define ID_FUNC 69
-#define ID_ASM 70
-#define ID_MACRO 71
-#define ID_BREAK 72
-#define ID_ONLY 73
-#define ID_RETURN 74
-#define ID_REPEAT 75
-#define ID_SWITCH 76
-#define ID_INLINE 77
-#define ID_MODULE 78
-#define ID_IMPORT 79
-#define ID_DECIDE 80
-#define ID_KNOWN 81
-#define ID_DEFAULT 82
-#define ID_BITCAST 83
-#define ID_COMP_IMPORT 84
-#define ID_CONVENTION 85
-#define ID_FALLTHROUGH 86
+#define ID_I8 59
+#define ID_U8 60
+#define ID_VAR 61
+#define ID_FOR 62
+#define ID_ABS 63
+#define ID_MIN 64
+#define ID_MAX 65
+#define ID_LEFT_SHIFT_ASSIGN 66
+#define ID_RIGHT_SHIFT_ASSIGN 67
+#define ID_INT 68
+#define ID_F16 69
+#define ID_I16 70
+#define ID_U16 71
+#define ID_F32 72
+#define ID_I32 73
+#define ID_U32 74
+#define ID_F64 75
+#define ID_I64 76
+#define ID_U64 77
+#define ID_F80 78
+#define ID_F128 79
+#define ID_I128 80
+#define ID_U128 81
+#define ID_I256 82
+#define ID_U256 83
+#define ID_ELSE 84
+#define ID_CASE 85
+#define ID_GOTO 86
+#define ID_FUNC 87
+#define ID_ASM 88
+#define ID_UINT 89
+#define ID_CHAR 90
+#define ID_LONG 91
+#define ID_FLOAT 92
+#define ID_SHORT 93
+#define ID_UCHAR 94
+#define ID_ULONG 95
+#define ID_MACRO 96
+#define ID_BREAK 97
+#define ID_ONLY 98
+#define ID_DOUBLE 99
+#define ID_USHORT 100
+#define ID_RETURN 101
+#define ID_REPEAT 102
+#define ID_SWITCH 103
+#define ID_INLINE 104
+#define ID_MODULE 105
+#define ID_IMPORT 106
+#define ID_DECIDE 107
+#define ID_KNOWN 108
+#define ID_DEFAULT 109
+#define ID_BITCAST 110
+#define ID_COMP_IMPORT 111
+#define ID_CONTINUE 112
+#define ID_CONVENTION 113
+#define ID_FALLTHROUGH 114
 
 #define OPERATOR(symbol, prec) (symbol) | ((prec) << 16)
 
@@ -247,6 +280,7 @@ lex_next:
             char *s = (char*)&buf[start];
             int len = i - start + inc;
             int id = 0;
+            //short node_flags = 0;
             bool is_binary = last_lex_type == TOKEN_NUMBER || last_lex_type == TOKEN_IDENTIFIER;
             if (len == 1) {
                 switch (*s) {
@@ -295,92 +329,93 @@ lex_next:
                 }
             }
             else if (len == 2) {
-                if (ARR_EQUAL_2(s, "if"))
-                    id = ID_IF;
-                else if (ARR_EQUAL_2(s, "<|"))
-                    id = OPERATOR(ID_LEFT_SHIFT, 7);
-                else if (ARR_EQUAL_2(s, ">|"))
-                    id = OPERATOR(ID_RIGHT_SHIFT, 7);
-                else if (ARR_EQUAL_2(s, "<<"))
-                    id = OPERATOR(ID_TEMPL_OPEN, 2);
-                else if (ARR_EQUAL_2(s, ">>"))
-                    id = OPERATOR(ID_TEMPL_CLOSE, 2);
-                else if (ARR_EQUAL_2(s, "@@"))
-                    id = OPERATOR(ID_REFER_BYTE, 7);
-                else if (ARR_EQUAL_2(s, "??"))
-                    id = OPERATOR(ID_OTHERWISE, 1);
-                else if (ARR_EQUAL_2(s, "++"))
-                    id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_INCREMENT : ID_PREFIX_INCREMENT, 4);
-                else if (ARR_EQUAL_2(s, "--"))
-                    id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_DECREMENT : ID_PREFIX_DECREMENT, 4);
-                else if (ARR_EQUAL_2(s, "||"))
-                    id = OPERATOR(ID_OR_BOOL, 14);
-                else if (ARR_EQUAL_2(s, "&&"))
-                    id = OPERATOR(ID_AND_BOOL, 13);
-                else if (ARR_EQUAL_2(s, "/,"))
-                    id = OPERATOR(ID_COMMA_OPTIONAL, 19);
+                switch (GET_BYTES_2(s)) {
+                    case GET_BYTES_2("if"): id = ID_IF; break;
+                    case GET_BYTES_2("<|"): id = OPERATOR(ID_LEFT_SHIFT, 7); break;
+                    case GET_BYTES_2(">|"): id = OPERATOR(ID_RIGHT_SHIFT, 7); break;
+                    case GET_BYTES_2("<<"): id = OPERATOR(ID_TEMPL_OPEN, 2); break;
+                    case GET_BYTES_2(">>"): id = OPERATOR(ID_TEMPL_CLOSE, 2); break;
+                    case GET_BYTES_2("@@"): id = OPERATOR(ID_REFER_BYTE, 7); break;
+                    case GET_BYTES_2("??"): id = OPERATOR(ID_OTHERWISE, 1); break;
+                    case GET_BYTES_2("++"): id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_INCREMENT : ID_PREFIX_INCREMENT, 4); break;
+                    case GET_BYTES_2("--"): id = OPERATOR(last_lex_type == TOKEN_IDENTIFIER ? ID_POSTFIX_DECREMENT : ID_PREFIX_DECREMENT, 4); break;
+                    case GET_BYTES_2("||"): id = OPERATOR(ID_OR_BOOL, 14); break;
+                    case GET_BYTES_2("&&"): id = OPERATOR(ID_AND_BOOL, 13); break;
+                    case GET_BYTES_2("/,"): id = OPERATOR(ID_COMMA_OPTIONAL, 19); break;
+                    case GET_BYTES_2("i8"): id = ID_I8; break;
+                    case GET_BYTES_2("u8"): id = ID_U8; break;
+                }
             }
             else if (len == 3) {
-                if (ARR_EQUAL_3(s, "var"))
-                    id = ID_VAR;
-                else if (ARR_EQUAL_3(s, "for"))
-                    id = ID_FOR;
-                else if (ARR_EQUAL_3(s, "abs"))
-                    id = ID_ABS;
-                else if (ARR_EQUAL_3(s, "min"))
-                    id = ID_MIN;
-                else if (ARR_EQUAL_3(s, "max"))
-                    id = ID_MAX;
-                else if (ARR_EQUAL_3(s, "<|="))
-                    id = OPERATOR(ID_LEFT_SHIFT_ASSIGN, 17);
-                else if (ARR_EQUAL_3(s, ">|="))
-                    id = OPERATOR(ID_RIGHT_SHIFT_ASSIGN, 17);
+                switch (GET_BYTES_3(s)) {
+                    case GET_BYTES_3("var"): id = ID_VAR; break;
+                    case GET_BYTES_3("for"): id = ID_FOR; break;
+                    case GET_BYTES_3("abs"): id = ID_ABS; break;
+                    case GET_BYTES_3("min"): id = ID_MIN; break;
+                    case GET_BYTES_3("max"): id = ID_MAX; break;
+                    case GET_BYTES_3("<|="): id = OPERATOR(ID_LEFT_SHIFT_ASSIGN, 17); break;
+                    case GET_BYTES_3(">|="): id = OPERATOR(ID_RIGHT_SHIFT_ASSIGN, 17); break;
+                    case GET_BYTES_3("int"): id = ID_INT; break;
+                    case GET_BYTES_3("f16"): id = ID_F16; break;
+                    case GET_BYTES_3("i16"): id = ID_I16; break;
+                    case GET_BYTES_3("u16"): id = ID_U16; break;
+                    case GET_BYTES_3("f32"): id = ID_F32; break;
+                    case GET_BYTES_3("i32"): id = ID_I32; break;
+                    case GET_BYTES_3("u32"): id = ID_U32; break;
+                    case GET_BYTES_3("f64"): id = ID_F64; break;
+                    case GET_BYTES_3("i64"): id = ID_I64; break;
+                    case GET_BYTES_3("u64"): id = ID_U64; break;
+                    case GET_BYTES_3("f80"): id = ID_F80; break;
+                }
             }
             else if (len == 4) {
-                if (ARR_EQUAL_4(s, "else"))
-                    id = ID_ELSE;
-                else if (ARR_EQUAL_4(s, "case"))
-                    id = ID_CASE;
-                else if (ARR_EQUAL_4(s, "goto"))
-                    id = ID_GOTO;
-                else if (ARR_EQUAL_4(s, "func"))
-                    id = ID_FUNC;
-                else if (ARR_EQUAL_4(s, "#asm"))
-                    id = ID_ASM;
+                switch (GET_BYTES_4(s)) {
+                    case GET_BYTES_4("else"): id = ID_ELSE; break;
+                    case GET_BYTES_4("case"): id = ID_CASE; break;
+                    case GET_BYTES_4("goto"): id = ID_GOTO; break;
+                    case GET_BYTES_4("func"): id = ID_FUNC; break;
+                    case GET_BYTES_4("#asm"): id = ID_ASM; break;
+                    case GET_BYTES_4("uint"): id = ID_UINT; break;
+                    case GET_BYTES_4("char"): id = ID_CHAR; break;
+                    case GET_BYTES_4("long"): id = ID_LONG; break;
+                }
             }
             else if (len == 5) {
-                if (ARR_EQUAL_5(s, "macro"))
-                    id = ID_MACRO;
-                else if (ARR_EQUAL_5(s, "break"))
-                    id = ID_BREAK;
-                else if (ARR_EQUAL_5(s, "#only"))
-                    id = ID_ONLY;
+                switch (GET_BYTES_5(s)) {
+                    case GET_BYTES_5("float"): id = ID_FLOAT; break;
+                    case GET_BYTES_5("short"): id = ID_SHORT; break;
+                    case GET_BYTES_5("uchar"): id = ID_UCHAR; break;
+                    case GET_BYTES_5("ulong"): id = ID_ULONG; break;
+                    case GET_BYTES_5("macro"): id = ID_MACRO; break;
+                    case GET_BYTES_5("break"): id = ID_BREAK; break;
+                    case GET_BYTES_5("#only"): id = ID_ONLY; break;
+                }
             }
             else if (len == 6) {
-                if (ARR_EQUAL_6(s, "return"))
-                    id = ID_RETURN;
-                else if (ARR_EQUAL_6(s, "repeat"))
-                    id = ID_REPEAT;
-                else if (ARR_EQUAL_6(s, "switch"))
-                    id = ID_SWITCH;
-                else if (ARR_EQUAL_6(s, "inline"))
-                    id = ID_INLINE;
-                else if (ARR_EQUAL_6(s, "module"))
-                    id = ID_MODULE;
-                else if (ARR_EQUAL_6(s, "import"))
-                    id = ID_IMPORT;
-                else if (ARR_EQUAL_6(s, "decide"))
-                    id = ID_DECIDE;
-                else if (ARR_EQUAL_6(s, "#known"))
-                    id = ID_KNOWN;
+                switch (GET_BYTES_6(s)) {
+                    case GET_BYTES_6("double"): id = ID_DOUBLE; break;
+                    case GET_BYTES_6("ushort"): id = ID_USHORT; break;
+                    case GET_BYTES_6("return"): id = ID_RETURN; break;
+                    case GET_BYTES_6("repeat"): id = ID_REPEAT; break;
+                    case GET_BYTES_6("switch"): id = ID_SWITCH; break;
+                    case GET_BYTES_6("inline"): id = ID_INLINE; break;
+                    case GET_BYTES_6("module"): id = ID_MODULE; break;
+                    case GET_BYTES_6("import"): id = ID_IMPORT; break;
+                    case GET_BYTES_6("decide"): id = ID_DECIDE; break;
+                    case GET_BYTES_6("#known"): id = ID_KNOWN; break;
+                }
             }
             else if (len == 7) {
-                if (ARR_EQUAL_7(s, "default"))
-                    id = ID_DEFAULT;
-                else if (ARR_EQUAL_7(s, "bitcast"))
-                    id = ID_BITCAST;
-                else if (ARR_EQUAL_7(s, "#import"))
-                    id = ID_COMP_IMPORT;
+                switch (GET_BYTES_7(s)) {
+                    case GET_BYTES_7("default"): id = ID_DEFAULT; break;
+                    case GET_BYTES_7("bitcast"): id = ID_BITCAST; break;
+                    case GET_BYTES_7("#import"): id = ID_COMP_IMPORT; break;
+                }
+            }
+            else if (len == 8) {
+                switch (GET_BYTES_8(s)) {
+                    case GET_BYTES_8("continue"): id = ID_CONTINUE; break;
+                }
             }
             else if (len == 11 && !memcmp(s, "#convention", 11)) {
                 id = ID_CONVENTION;
@@ -776,13 +811,23 @@ int typecheck_prepass(Ast *ast, Buffer *buffer, IntVector *allocator)
 {
     int first = ast->first_stmt;
     int n_stmts = ast->n_stmts;
+    Ast_Statement *stmts = STRUCT_AT_POS(vec, st, pos);
 
     int module_token = -1;
     int func_token = -1;
 
     for (int i = 0; i < n_stmts; i++) {
-        Ast_Type type = {0};
-        
+        Ast_Type t = {0};
+    /*
+        union {
+            u32 type_flags;
+            int n_members;
+        };
+        int bytes;
+        int token;
+    */
+        t.
+        stmts[i].type = t;
     }
 }
 

@@ -43,7 +43,7 @@ typedef struct {
 } Ast_Type;
 
 typedef struct {
-    u32 type_flags;
+    Ast_Type type;
     int name_token;
     int first_stmt_pos;
     int n_stmts;
@@ -52,6 +52,7 @@ typedef struct {
 } Ast_Global;
 
 typedef struct {
+    Ast_Type type;
     int parent;
     int first_node;
     int left_stmt;

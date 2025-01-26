@@ -1,6 +1,6 @@
 module hello_linux;
 
-int a = b * 9 + c / 8 % d - 7;
+i32 a = b * 9 + c / 8 % d - 7;
 
 #only(#comptime)
 func main() -> #Compilation {
@@ -14,6 +14,20 @@ func main() -> #Compilation {
     };
     t.generate = x64_codegen;
     t.assemble = x64_assemble;
+    t.accepted_hwtypes = {
+        i8, u8, i16, u16, f32, i32, u32, f64, i64, u64
+    };
+    t.t_pointer = u64;
+    t.t_char = i8;
+    t.t_uchar = u8;
+    t.t_short = i16;
+    t.t_ushort = u16;
+    t.t_int = i32;
+    t.t_uint = u32;
+    t.t_long = i64;
+    t.t_ulong = u64;
+    t.t_float = f32;
+    t.t_double = f64;
     t.test[0] = "none";
 
     var ctx = #Compilation {};
